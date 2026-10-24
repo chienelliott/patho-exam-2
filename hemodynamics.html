@@ -252,7 +252,7 @@ table.ro td:first-child,table.ro th:first-child{text-align:left}
 <main class="wrap">
 
 <h1>Hemodynamics sandbox</h1>
-<p class="lead">Change one thing at a time and watch what moves. The dashed lines are always the normal heart, so you can compare. Each button reproduces a scenario from L14; the sliders let you explore in between.</p>
+<p class="lead">Change one thing at a time and watch what moves. The dashed lines are always the normal heart, so you can compare. Each button reproduces a scenario from L14; the sliders let you explore in between. These are simplified teaching models shaped to match the L14 graphs: the directions of change are what matter, and the numbers are illustrative.</p>
 <div class="selftest" id="selftest">Self-check failed: the calculations on this page differ from the verified models. Please report this.</div>
 <div class="cols">
   <section class="panel">
@@ -360,9 +360,12 @@ function chart(box, xr, yr, xt, yt, xlab, ylab){
   s.appendChild(sv("line", {x1: x0, x2: x0, y1: y0, y2: y0 + h, "class": "fg-axis"}));
   var tx = sv("text", {x: x0 + w / 2, y: H - 4, "text-anchor": "middle", "class": "fg-small"}); tx.textContent = xlab; s.appendChild(tx);
   var ty = sv("text", {transform: "translate(14 " + (y0 + h / 2) + ") rotate(-90)", "text-anchor": "middle", "class": "fg-small"}); ty.textContent = ylab; s.appendChild(ty);
-  var g = sv("g", {}); s.appendChild(g);
+  // curves are clipped to the plot area, so extreme settings never spill past the axes
+  var cid = box.id + "-clip", defs = sv("defs", {}), cp = sv("clipPath", {id: cid});
+  cp.appendChild(sv("rect", {x: x0, y: y0, width: w, height: h})); defs.appendChild(cp); s.appendChild(defs);
+  var g = sv("g", {"clip-path": "url(#" + cid + ")"}); s.appendChild(g);
   box.innerHTML = ""; box.appendChild(s);
-  return {g: g, X: X, Y: Y, clip: function(pts){ return pts.filter(function(p){ return p[1] >= yr[0] - 1e-9 && p[1] <= yr[1] + 1e-9; }); }};
+  return {g: g, X: X, Y: Y};
 }
 function pathOf(c, pts){ return pts.map(function(p, i){ return (i ? "L" : "M") + c.X(p[0]).toFixed(1) + " " + c.Y(p[1]).toFixed(1); }).join(" "); }
 function arrow(now, base, dec){ var d = now - base; if (Math.abs(d) < Math.pow(10, -dec) * 0.6) return ""; return d > 0 ? ' <span class="up">▲</span>' : ' <span class="dn">▼</span>'; }
@@ -386,12 +389,15 @@ function drawPV(){
   if (!pvState.mr) c.g.appendChild(sv("path", {d: pathOf(c, [[V0, 0], [ev, pvState.emax * (ev - V0)]]), "class": "fg-axis fg-c2 fg-dash"}));
   c.g.appendChild(sv("path", {d: pathOf(c, s.pts), "class": "fg-trace fg-c1 fg-w2"}));
   var co = s.sv * pvState.hr / 1000, con = n.sv * 72 / 1000;
+  // with mitral regurgitation part of each stroke goes back into the LA, so
+  // SV × HR is total LV output, not forward cardiac output
+  var coLabel = pvState.mr ? "Total LV output, forward + back (L/min)" : "CO = SV × HR (L/min)";
   var rows = [["", "Now", "Normal"], ["EDV (mL)", s.edv.toFixed(0) + arrow(s.edv, n.edv, 0), n.edv.toFixed(0)],
               ["ESV (mL)", s.esv.toFixed(0) + arrow(s.esv, n.esv, 0), n.esv.toFixed(0)],
               [pvState.mr ? "SV, total (mL)" : "SV (mL)", s.sv.toFixed(0) + arrow(s.sv, n.sv, 0), n.sv.toFixed(0)],
               ["EF", (100 * s.ef).toFixed(0) + "%" + arrow(s.ef * 100, n.ef * 100, 0), (100 * n.ef).toFixed(0) + "%"],
               ["Peak pressure (mmHg)", s.peak.toFixed(0) + arrow(s.peak, n.peak, 0), n.peak.toFixed(0)],
-              ["CO = SV × HR (L/min)", co.toFixed(1) + arrow(co, con, 1), con.toFixed(1)]];
+              [coLabel, co.toFixed(1) + arrow(co, con, 1), con.toFixed(1)]];
   var t = document.getElementById("pvro"); t.innerHTML = "";
   rows.forEach(function(r, i){ var tr = t.insertRow(); r.forEach(function(x){ var td = el(i ? "td" : "th"); td.innerHTML = x; tr.appendChild(td); }); });
   document.querySelectorAll("#pvsl input").forEach(function(inp){ inp.disabled = valve; });
