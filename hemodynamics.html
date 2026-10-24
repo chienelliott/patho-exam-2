@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hemodynamics Sandbox</title>
+<script>
+(function(){
+  var k = "patho-cardio-theme", t = null, m = /[?&]theme=(light|dark)\b/.exec(location.search);
+  if (m){ t = m[1]; try { localStorage.setItem(k, t); } catch(e){} }
+  else { try { t = localStorage.getItem(k); } catch(e){} }
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+<style>:root{
+  --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1f; --ink2:#55555c; --ink3:#86868b;
+  --line:#e2e0db; --fill:#efede8; --accent:#2f5bd3; --accent-ink:#ffffff;
+  --ok:#1f7a45; --ok-bg:#e5f4ea; --bad:#b4342b; --bad-bg:#fbe9e7; --flag:#c98a04;
+  --r:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416; --card:#1e1e21; --ink:#ececee; --ink2:#a9a9b0; --ink3:#77777e;
+    --line:#2f2f34; --fill:#28282c; --accent:#7c9cff; --accent-ink:#0e0e10;
+    --ok:#5fcf8c; --ok-bg:#16301f; --bad:#ff8a7f; --bad-bg:#3a1d1a; --flag:#f2b632;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1e1e21; --ink:#ececee; --ink2:#a9a9b0; --ink3:#77777e;
+  --line:#2f2f34; --fill:#28282c; --accent:#7c9cff; --accent-ink:#0e0e10;
+  --ok:#5fcf8c; --ok-bg:#16301f; --bad:#ff8a7f; --bad-bg:#3a1d1a; --flag:#f2b632;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;color:inherit}
+.wrap{max-width:820px;margin:0 auto;padding:0 16px 48px}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top{max-width:820px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.top h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.01em}
+.top .sub{font-size:13px;color:var(--ink2)}
+.top .grow{flex:1;min-width:0}
+.bar{height:4px;background:var(--fill);border-radius:2px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.themetoggle{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--card)}
+.themetoggle button{font:inherit;font-size:13px;border:none;background:none;color:var(--ink2);border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.themetoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.themetoggle button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.themetoggle svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-top:16px}
+details.panel>summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;display:flex;align-items:center;gap:8px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:rotate(45deg);transition:transform .15s}
+details.panel[open]>summary::after{transform:rotate(-135deg)}
+.pbody{padding:0 16px 14px}
+.count{font-weight:400;color:var(--ink2);font-size:14px}
+
+.frow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);width:84px;flex:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 11px;font-size:14px;cursor:pointer;user-select:none}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip:focus-visible,.opt:focus-visible,.iconbtn:focus-visible,.nbtn:focus-visible,.navgrid button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.frow .sp{flex:1}
+.fhelp{font-size:12.5px;line-height:1.45;color:var(--ink3);margin:-4px 0 10px 90px}
+.fhelp b{font-weight:600;color:var(--ink2)}
+@media (max-width:560px){.fhelp{margin-left:0}}
+.linkbtn{background:none;border:none;color:var(--accent);cursor:pointer;padding:2px 4px;font-size:14px}
+
+.card{padding:20px 20px 16px}
+.meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);margin-bottom:10px}
+.meta .grow{flex:1}
+.flagbtn{border:1px solid var(--line);background:none;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:13px;color:var(--ink2)}
+.flagbtn[aria-pressed="true"]{color:var(--flag);border-color:var(--flag)}
+.stem{font-size:18px;line-height:1.55;margin:0 0 16px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;border:1px solid var(--line);background:var(--card);border-radius:var(--r);padding:11px 14px;cursor:pointer;transition:border-color .12s,background .12s}
+.opt:hover:not([disabled]){border-color:var(--ink3);background:var(--fill)}
+.opt .k{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--ink2)}
+.opt[disabled]{cursor:default}
+.opt.correct{border-color:var(--ok);background:var(--ok-bg)}
+.opt.correct .k{background:var(--ok);border-color:var(--ok);color:var(--card)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opt.wrong .k{background:var(--bad);border-color:var(--bad);color:var(--card)}
+.opt.dim{opacity:.55}
+/* Cross-out, matching the CUSM quiz (build_questions.py): the x sits OUTSIDE
+   the option so a cross-out is never one mis-aimed pixel from answering; it
+   is a quiet glyph that only gains presence on hover or when on; a crossed
+   row fades uniformly and strikes through. */
+.optrow{display:flex;gap:4px;align-items:stretch}
+.optrow .opt{flex:1 1 auto;min-width:0}
+.opt.xed{opacity:.42;cursor:default;background:var(--fill)}
+.opt.xed .t{text-decoration:line-through;text-decoration-thickness:1.5px}
+.opt.xed:hover:not([disabled]){background:var(--fill);border-color:var(--line)}
+/* A crossed-out option that turns out to be the answer must come back at
+   full strength: restate everything .xed changed. */
+.opt.xed.correct{opacity:1;background:var(--ok-bg);border-color:var(--ok)}
+.opt.xed.correct .t{text-decoration:none}
+.xbtn{flex:0 0 30px;border:none;background:none;cursor:pointer;color:var(--ink3);opacity:.38;font-size:17px;font-weight:400;line-height:1;border-radius:var(--r);font-family:inherit;padding:0;transition:opacity .14s ease,background .14s ease,color .14s ease}
+.xbtn:hover{opacity:1;background:var(--fill);color:var(--ink)}
+.xbtn.on{opacity:.8;color:var(--bad);background:none}
+.xbtn.on:hover{opacity:1;background:var(--bad-bg)}
+.xbtn:disabled{opacity:.14;background:none;cursor:default}
+.xbtn.on:disabled{opacity:.3;color:var(--bad)}
+.xbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.result{margin-top:14px;border-radius:var(--r);padding:12px 14px;background:var(--fill);font-size:15px}
+.result b.ok{color:var(--ok)} .result b.bad{color:var(--bad)}
+.result .src{color:var(--ink2);font-size:13px;margin-top:6px}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;margin-left:6px;color:var(--ink2);background:var(--card)}
+.nav{display:flex;gap:8px;margin-top:16px;align-items:center}
+.nbtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer}
+.nbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.nbtn[disabled]{opacity:.4;cursor:default}
+.nav .grow{flex:1}
+.hint{font-size:12px;color:var(--ink3);margin-top:10px}
+.empty{padding:28px 20px;text-align:center;color:var(--ink2)}
+
+.navgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px}
+.navhead{grid-column:1/-1;font-size:13px;color:var(--ink2);margin:10px 0 0;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.navhead:first-child{margin-top:0}
+.navhead b{color:var(--ink);font-weight:600}
+.navhead span{color:var(--ink3)}
+.navgrid button{position:relative;border:1px solid var(--line);background:var(--card);border-radius:6px;padding:5px 0;font-size:12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.navgrid button.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.navgrid button.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.navgrid button.cur{outline:2px solid var(--accent);outline-offset:1px}
+.navgrid button.fl::after{content:"";position:absolute;top:2px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--flag)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 0 0}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-ok::before{background:var(--ok-bg);border-color:var(--ok)}
+.legend .l-bad::before{background:var(--bad-bg);border-color:var(--bad)}
+.legend .l-fl::before{background:var(--flag);border-color:var(--flag);border-radius:50%}
+
+table.prog{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+table.prog th,table.prog td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+table.prog th:first-child,table.prog td:first-child{text-align:left}
+table.prog th{font-weight:600;color:var(--ink2);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.danger{border:1px solid var(--bad);color:var(--bad);background:none;border-radius:8px;padding:7px 12px;cursor:pointer;margin:4px 8px 4px 0}
+.danger:hover{background:var(--bad-bg)}
+.note{font-size:14px;color:var(--ink2)}
+.note li{margin:6px 0}
+.warn{font-size:13px;color:var(--bad);margin-top:8px}
+@media (max-width:560px){
+  .flabel{width:100%}
+  .stem{font-size:17px}
+  .card{padding:16px 14px 14px}
+  .top .sub{display:none}
+}
+/* Figures in questions. build_quiz.py appends this file only when a quiz has
+   figures, so quizzes without them are unchanged. Figure SVGs carry no colors
+   of their own: they use the fg-* classes below, which follow the light/dark
+   theme through the same custom properties as the rest of the page. */
+:root{
+  --fg-paper:#fff7f7; --fg-minor:#f6caca; --fg-major:#e48f8f; --fg-trace:#1d1d1f;
+  --fg-c1:#2f5bd3; --fg-c2:#c0392b; --fg-c3:#1f7a45; --fg-c4:#a05a00; --fg-c5:#7b3fb3;
+  --fg-oxy:#d0352b; --fg-deoxy:#2f5bd3; --fg-mixed:#8a3fa6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fg-paper:#1b1718; --fg-minor:#3a2a2c; --fg-major:#6b4246; --fg-trace:#f2f2f4;
+    --fg-c1:#7c9cff; --fg-c2:#ff8a7f; --fg-c3:#5fcf8c; --fg-c4:#f2b632; --fg-c5:#c39bf0;
+    --fg-oxy:#ff7a70; --fg-deoxy:#7c9cff; --fg-mixed:#c08ae0;
+  }
+}
+:root[data-theme="dark"]{
+  --fg-paper:#1b1718; --fg-minor:#3a2a2c; --fg-major:#6b4246; --fg-trace:#f2f2f4;
+  --fg-c1:#7c9cff; --fg-c2:#ff8a7f; --fg-c3:#5fcf8c; --fg-c4:#f2b632; --fg-c5:#c39bf0;
+  --fg-oxy:#ff7a70; --fg-deoxy:#7c9cff; --fg-mixed:#c08ae0;
+}
+.fig{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig svg{display:block;width:100%;height:auto;max-width:100%}
+.fig svg.fg-strip{min-width:560px}
+.result .fig{margin:12px 0 4px}
+.badge{display:inline-block;font-size:12px;border:1px solid var(--flag);color:var(--flag);border-radius:999px;padding:0 8px}
+
+.fg-paper{fill:var(--fg-paper)}
+.fg-minor{stroke:var(--fg-minor);stroke-width:.6;fill:none}
+.fg-major{stroke:var(--fg-major);stroke-width:1.1;fill:none}
+.fg-trace{stroke:var(--fg-trace);stroke-width:1.6;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.fg-axis{stroke:var(--ink2);stroke-width:1.2;fill:none}
+.fg-guide{stroke:var(--ink3);stroke-width:1;fill:none;stroke-dasharray:4 4}
+.fg-thin{stroke:var(--line);stroke-width:1;fill:none}
+.fg-text{fill:var(--ink);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.fg-small{fill:var(--ink2);font:11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.fg-bold{font-weight:650}
+.fg-c1{stroke:var(--fg-c1)} .fg-c2{stroke:var(--fg-c2)} .fg-c3{stroke:var(--fg-c3)} .fg-c4{stroke:var(--fg-c4)} .fg-c5{stroke:var(--fg-c5)}
+.fg-f1{fill:var(--fg-c1)} .fg-f2{fill:var(--fg-c2)} .fg-f3{fill:var(--fg-c3)} .fg-f4{fill:var(--fg-c4)} .fg-f5{fill:var(--fg-c5)}
+.fg-ink{fill:var(--ink)} .fg-card{fill:var(--card)} .fg-fill{fill:var(--fill)}
+.fg-oxy{stroke:var(--fg-oxy);fill:var(--fg-oxy)} .fg-deoxy{stroke:var(--fg-deoxy);fill:var(--fg-deoxy)} .fg-mixed{stroke:var(--fg-mixed);fill:var(--fg-mixed)}
+.fg-box{fill:var(--card);stroke:var(--ink2);stroke-width:1.3}
+.fg-dash{stroke-dasharray:5 4}
+.fg-w2{stroke-width:2.4}
+.fg-halo{paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round}
+
+:root{--nav-max:1100px;--page-max:1100px}
+
+.studynav{border-bottom:1px solid var(--line);background:var(--bg);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.studynav .in{max-width:var(--nav-max,1680px);margin:0 auto;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;
+  padding:8px max(var(--nav-gutter,16px),env(safe-area-inset-right,0px)) 8px max(var(--nav-gutter,16px),env(safe-area-inset-left,0px))}
+.studynav .set{font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.01em;white-space:nowrap}
+.studynav .links{display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:0}
+.studynav .links a{font-size:14px;color:var(--ink2);text-decoration:none;padding:5px 11px;border-radius:999px}
+.studynav .links a:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.studynav .links a[aria-current="page"]{color:var(--ink);font-weight:700;background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.studynav a:focus-visible,.studynav button:focus-visible{outline:2px solid var(--ink2);outline-offset:2px}
+.studynav .themetoggle{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--surface,var(--card))}
+.studynav .themetoggle button{font:inherit;font-size:13px;border:none;background:none;color:var(--ink2);border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.studynav .themetoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.studynav .themetoggle svg{display:inline-block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+@media print{.studynav{display:none}}
+
+.wrap{max-width:var(--page-max,980px);margin:0 auto;padding:0 16px 56px}
+h1{font-size:24px;margin:22px 0 4px;letter-spacing:-.01em}
+.lead{color:var(--ink2);margin:0 0 16px;max-width:760px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-top:16px;padding:16px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--ink2)} .small{font-size:13px}
+.src{color:var(--ink3);font-size:12.5px}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.panel h2{font-size:18px;margin:0 0 4px}
+.panel svg{width:100%;height:auto;display:block}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.sl{display:grid;grid-template-columns:150px 1fr 70px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.sl input{accent-color:var(--accent);width:100%}
+.sl output{text-align:right;font-variant-numeric:tabular-nums}
+table.ro{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;margin-top:8px}
+table.ro td,table.ro th{padding:4px;border-bottom:1px solid var(--line);text-align:right}
+table.ro td:first-child,table.ro th:first-child{text-align:left}
+.up{color:var(--ok)} .dn{color:var(--bad)}
+.note{font-size:14.5px;color:var(--ink2);margin-top:8px;min-height:3em}
+.selftest{display:none;border:1px solid var(--bad);background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:8px 12px;margin-top:12px}
+.legend2{font-size:13px;color:var(--ink2);margin-top:4px}
+</style></head>
+<body>
+<nav class="studynav" id="studynav" aria-label="Cardiology Pathophysiology">
+  <div class="in">
+    <span class="set">Cardiology Pathophysiology</span>
+    <div class="links"><a href="index.html">Home</a><a href="quiz.html">Practice quiz</a><a href="EKG.html">ECG trainer</a><a href="cardiac_cycle.html">Cardiac cycle</a><a href="hemodynamics.html" aria-current="page">Hemodynamics</a><a href="summary.html">Summary sheets</a></div>
+    <div class="themetoggle" role="group" aria-label="Color theme">
+      <button type="button" id="th-light" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M3 13l1.1-1.1M11.9 4.1L13 3"/></svg>Light</button>
+      <button type="button" id="th-dark" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6z"/></svg>Dark</button>
+    </div>
+  </div>
+</nav>
+<main class="wrap">
+
+<h1>Hemodynamics sandbox</h1>
+<p class="lead">Change one thing at a time and watch what moves. The dashed lines are always the normal heart, so you can compare. Each button reproduces a scenario from L14; the sliders let you explore in between.</p>
+<div class="selftest" id="selftest">Self-check failed: the calculations on this page differ from the verified models. Please report this.</div>
+<div class="cols">
+  <section class="panel">
+    <h2>Pressure–volume loop</h2>
+    <div class="presets" id="pvp"></div>
+    <div id="pvsvg" class="fig" role="img" aria-label="Left ventricular pressure–volume loop compared with a dashed normal loop"></div>
+    <div class="legend2">Solid: current loop · dashed: normal · red dashed line: end-systolic pressure–volume relation</div>
+    <div id="pvsl"></div>
+    <table class="ro" id="pvro"></table>
+    <p class="note" id="pvnote"></p>
+  </section>
+  <section class="panel">
+    <h2>Cardiac output and venous return</h2>
+    <div class="presets" id="cfp"></div>
+    <div id="cfsvg" class="fig" role="img" aria-label="Cardiac function and venous return curves with the equilibrium point"></div>
+    <div class="legend2">Blue: cardiac function · red: venous return · dashed: normal · dot: where they cross</div>
+    <div id="cfsl"></div>
+    <table class="ro" id="cfro"></table>
+    <p class="note" id="cfnote"></p>
+  </section>
+</div>
+
+</main>
+<script id="data" type="application/json">{"ref":{"pv":{"normal":{"par":{"edv":120,"emax":2.875,"avo":80,"pes":115,"bump":6},"pts":[[50.0,2.6],[51.166667,2.621372],[52.333333,2.643505],[53.5,2.666426],[54.666667,2.690164],[55.833333,2.714748],[57.0,2.740207],[58.166667,2.766573],[59.333333,2.793878],[60.5,2.822156],[61.666667,2.851441],[62.833333,2.881769],[64.0,2.913177],[65.166667,2.945704],[66.333333,2.97939],[67.5,3.014275],[68.666667,3.050404],[69.833333,3.087819],[71.0,3.126566],[72.166667,3.166694],[73.333333,3.208252],[74.5,3.251289],[75.666667,3.29586],[76.833333,3.342018],[78.0,3.38982],[79.166667,3.439325],[80.333333,3.490594],[81.5,3.543688],[82.666667,3.598674],[83.833333,3.655618],[85.0,3.714591],[86.166667,3.775664],[87.333333,3.838913],[88.5,3.904414],[89.666667,3.972249],[90.833333,4.0425],[92.0,4.115253],[93.166667,4.190598],[94.333333,4.268626],[95.5,4.349434],[96.666667,4.43312],[97.833333,4.519787],[99.0,4.609541],[100.166667,4.702492],[101.333333,4.798754],[102.5,4.898445],[103.666667,5.001687],[104.833333,5.108606],[106.0,5.219334],[107.166667,5.334005],[108.333333,5.452762],[109.5,5.575748],[110.666667,5.703115],[111.833333,5.835019],[113.0,5.971621],[114.166667,6.113089],[115.333333,6.259596],[116.5,6.411322],[117.666667,6.568452],[118.833333,6.731179],[120.0,6.899702],[120,8.11804],[120,9.336379],[120,10.554717],[120,11.773055],[120,12.991393],[120,14.209732],[120,15.42807],[120,16.646408],[120,17.864747],[120,19.083085],[120,20.301423],[120,21.519762],[120,22.7381],[120,23.956438],[120,25.174776],[120,26.393115],[120,27.611453],[120,28.829791],[120,30.04813],[120,31.266468],[120,32.484806],[120,33.703145],[120,34.921483],[120,36.139821],[120,37.358159],[120,38.576498],[120,39.794836],[120,41.013174],[120,42.231513],[120,43.449851],[120,44.668189],[120,45.886528],[120,47.104866],[120,48.323204],[120,49.541542],[120,50.759881],[120,51.978219],[120,53.196557],[120,54.414896],[120,55.633234],[120,56.851572],[120,58.069911],[120,59.288249],[120,60.506587],[120,61.724925],[120,62.943264],[120,64.161602],[120,65.37994],[120,66.598279],[120,67.816617],[120,69.034955],[120,70.253294],[120,71.471632],[120,72.68997],[120,73.908308],[120,75.126647],[120,76.344985],[120,77.563323],[120,78.781662],[120,80.0],[118.833333,81.47096],[117.666667,82.921615],[116.5,84.351107],[115.333333,85.758581],[114.166667,87.143192],[113.0,88.504102],[111.833333,89.840485],[110.666667,91.151531],[109.5,92.436443],[108.333333,93.694444],[107.166667,94.924779],[106.0,96.126712],[104.833333,97.299533],[103.666667,98.442561],[102.5,99.555141],[101.333333,100.636647],[100.166667,101.686487],[99.0,102.704102],[97.833333,103.688968],[96.666667,104.640597],[95.5,105.558539],[94.333333,106.442384],[93.166667,107.29176],[92.0,108.106339],[90.833333,108.885833],[89.666667,109.629997],[88.5,110.33863],[87.333333,111.011576],[86.166667,111.648722],[85.0,112.25],[83.833333,112.815388],[82.666667,113.344909],[81.5,113.83863],[80.333333,114.296663],[79.166667,114.719166],[78.0,115.106339],[76.833333,115.458427],[75.666667,115.775717],[74.5,116.058539],[73.333333,116.307264],[72.166667,116.522301],[71.0,116.704102],[69.833333,116.853154],[68.666667,116.96998],[67.5,117.055141],[66.333333,117.109228],[65.166667,117.132867],[64.0,117.126712],[62.833333,117.091445],[61.666667,117.027778],[60.5,116.936443],[59.333333,116.818198],[58.166667,116.673819],[57.0,116.504102],[55.833333,116.309859],[54.666667,116.091915],[53.5,115.851107],[52.333333,115.588282],[51.166667,115.304294],[50.0,115.0],[50.0,113.126667],[50.0,111.253333],[50.0,109.38],[50.0,107.506667],[50.0,105.633333],[50.0,103.76],[50.0,101.886667],[50.0,100.013333],[50.0,98.14],[50.0,96.266667],[50.0,94.393333],[50.0,92.52],[50.0,90.646667],[50.0,88.773333],[50.0,86.9],[50.0,85.026667],[50.0,83.153333],[50.0,81.28],[50.0,79.406667],[50.0,77.533333],[50.0,75.66],[50.0,73.786667],[50.0,71.913333],[50.0,70.04],[50.0,68.166667],[50.0,66.293333],[50.0,64.42],[50.0,62.546667],[50.0,60.673333],[50.0,58.8],[50.0,56.926667],[50.0,55.053333],[50.0,53.18],[50.0,51.306667],[50.0,49.433333],[50.0,47.56],[50.0,45.686667],[50.0,43.813333],[50.0,41.94],[50.0,40.066667],[50.0,38.193333],[50.0,36.32],[50.0,34.446667],[50.0,32.573333],[50.0,30.7],[50.0,28.826667],[50.0,26.953333],[50.0,25.08],[50.0,23.206667],[50.0,21.333333],[50.0,19.46],[50.0,17.586667],[50.0,15.713333],[50.0,13.84],[50.0,11.966667],[50.0,10.093333],[50.0,8.22],[50.0,6.346667],[50.0,4.473333],[50.0,2.6]]},"preload_up":{"par":{"edv":150,"emax":2.875,"avo":80,"pes":115,"bump":6},"pts":[[50.0,2.6],[51.666667,2.630763],[53.333333,2.663103],[55.0,2.697101],[56.666667,2.732842],[58.333333,2.770415],[60.0,2.809915],[61.666667,2.851441],[63.333333,2.895095],[65.0,2.940987],[66.666667,2.989233],[68.333333,3.039952],[70.0,3.093271],[71.666667,3.149324],[73.333333,3.208252],[75.0,3.2702],[76.666667,3.335325],[78.333333,3.403788],[80.0,3.475762],[81.666667,3.551426],[83.333333,3.630969],[85.0,3.714591],[86.666667,3.8025],[88.333333,3.894916],[90.0,3.99207],[91.666667,4.094206],[93.333333,4.201578],[95.0,4.314455],[96.666667,4.43312],[98.333333,4.557869],[100.0,4.689013],[101.666667,4.826882],[103.333333,4.971819],[105.0,5.124188],[106.666667,5.284368],[108.333333,5.452762],[110.0,5.629788],[111.666667,5.815892],[113.333333,6.011537],[115.0,6.217213],[116.666667,6.433434],[118.333333,6.660741],[120.0,6.899702],[121.666667,7.150915],[123.333333,7.415008],[125.0,7.692642],[126.666667,7.984509],[128.333333,8.291342],[130.0,8.613906],[131.666667,8.953008],[133.333333,9.309496],[135.0,9.684262],[136.666667,10.078243],[138.333333,10.492423],[140.0,10.927839],[141.666667,11.385579],[143.333333,11.866788],[145.0,12.372669],[146.666667,12.904487],[148.333333,13.463572],[150.0,14.051322],[150,15.150467],[150,16.249611],[150,17.348756],[150,18.447901],[150,19.547045],[150,20.64619],[150,21.745335],[150,22.844479],[150,23.943624],[150,25.042768],[150,26.141913],[150,27.241058],[150,28.340202],[150,29.439347],[150,30.538492],[150,31.637636],[150,32.736781],[150,33.835926],[150,34.93507],[150,36.034215],[150,37.133359],[150,38.232504],[150,39.331649],[150,40.430793],[150,41.529938],[150,42.629083],[150,43.728227],[150,44.827372],[150,45.926516],[150,47.025661],[150,48.124806],[150,49.22395],[150,50.323095],[150,51.42224],[150,52.521384],[150,53.620529],[150,54.719673],[150,55.818818],[150,56.917963],[150,58.017107],[150,59.116252],[150,60.215397],[150,61.314541],[150,62.413686],[150,63.512831],[150,64.611975],[150,65.71112],[150,66.810264],[150,67.909409],[150,69.008554],[150,70.107698],[150,71.206843],[150,72.305988],[150,73.405132],[150,74.504277],[150,75.603421],[150,76.702566],[150,77.801711],[150,78.900855],[150,80.0],[148.333333,81.47096],[146.666667,82.921615],[145.0,84.351107],[143.333333,85.758581],[141.666667,87.143192],[140.0,88.504102],[138.333333,89.840485],[136.666667,91.151531],[135.0,92.436443],[133.333333,93.694444],[131.666667,94.924779],[130.0,96.126712],[128.333333,97.299533],[126.666667,98.442561],[125.0,99.555141],[123.333333,100.636647],[121.666667,101.686487],[120.0,102.704102],[118.333333,103.688968],[116.666667,104.640597],[115.0,105.558539],[113.333333,106.442384],[111.666667,107.29176],[110.0,108.106339],[108.333333,108.885833],[106.666667,109.629997],[105.0,110.33863],[103.333333,111.011576],[101.666667,111.648722],[100.0,112.25],[98.333333,112.815388],[96.666667,113.344909],[95.0,113.83863],[93.333333,114.296663],[91.666667,114.719166],[90.0,115.106339],[88.333333,115.458427],[86.666667,115.775717],[85.0,116.058539],[83.333333,116.307264],[81.666667,116.522301],[80.0,116.704102],[78.333333,116.853154],[76.666667,116.96998],[75.0,117.055141],[73.333333,117.109228],[71.666667,117.132867],[70.0,117.126712],[68.333333,117.091445],[66.666667,117.027778],[65.0,116.936443],[63.333333,116.818198],[61.666667,116.673819],[60.0,116.504102],[58.333333,116.309859],[56.666667,116.091915],[55.0,115.851107],[53.333333,115.588282],[51.666667,115.304294],[50.0,115.0],[50.0,113.126667],[50.0,111.253333],[50.0,109.38],[50.0,107.506667],[50.0,105.633333],[50.0,103.76],[50.0,101.886667],[50.0,100.013333],[50.0,98.14],[50.0,96.266667],[50.0,94.393333],[50.0,92.52],[50.0,90.646667],[50.0,88.773333],[50.0,86.9],[50.0,85.026667],[50.0,83.153333],[50.0,81.28],[50.0,79.406667],[50.0,77.533333],[50.0,75.66],[50.0,73.786667],[50.0,71.913333],[50.0,70.04],[50.0,68.166667],[50.0,66.293333],[50.0,64.42],[50.0,62.546667],[50.0,60.673333],[50.0,58.8],[50.0,56.926667],[50.0,55.053333],[50.0,53.18],[50.0,51.306667],[50.0,49.433333],[50.0,47.56],[50.0,45.686667],[50.0,43.813333],[50.0,41.94],[50.0,40.066667],[50.0,38.193333],[50.0,36.32],[50.0,34.446667],[50.0,32.573333],[50.0,30.7],[50.0,28.826667],[50.0,26.953333],[50.0,25.08],[50.0,23.206667],[50.0,21.333333],[50.0,19.46],[50.0,17.586667],[50.0,15.713333],[50.0,13.84],[50.0,11.966667],[50.0,10.093333],[50.0,8.22],[50.0,6.346667],[50.0,4.473333],[50.0,2.6]]},"preload_down":{"par":{"edv":95,"emax":2.875,"avo":80,"pes":115,"bump":6},"pts":[[50.0,2.6],[50.75,2.613653],[51.5,2.627617],[52.25,2.641898],[53.0,2.656505],[53.75,2.671443],[54.5,2.686722],[55.25,2.702348],[56.0,2.71833],[56.75,2.734676],[57.5,2.751394],[58.25,2.768492],[59.0,2.785979],[59.75,2.803864],[60.5,2.822156],[61.25,2.840864],[62.0,2.859998],[62.75,2.879567],[63.5,2.899582],[64.25,2.920052],[65.0,2.940987],[65.75,2.9624],[66.5,2.984299],[67.25,3.006697],[68.0,3.029604],[68.75,3.053033],[69.5,3.076995],[70.25,3.101502],[71.0,3.126566],[71.75,3.152201],[72.5,3.17842],[73.25,3.205235],[74.0,3.23266],[74.75,3.260709],[75.5,3.289397],[76.25,3.318737],[77.0,3.348745],[77.75,3.379436],[78.5,3.410825],[79.25,3.442928],[80.0,3.475762],[80.75,3.509343],[81.5,3.543688],[82.25,3.578815],[83.0,3.614741],[83.75,3.651484],[84.5,3.689064],[85.25,3.727498],[86.0,3.766808],[86.75,3.807012],[87.5,3.84813],[88.25,3.890184],[89.0,3.933196],[89.75,3.977186],[90.5,4.022176],[91.25,4.068191],[92.0,4.115253],[92.75,4.163386],[93.5,4.212613],[94.25,4.262962],[95.0,4.314455],[95,5.575881],[95,6.837307],[95,8.098733],[95,9.360158],[95,10.621584],[95,11.88301],[95,13.144436],[95,14.405861],[95,15.667287],[95,16.928713],[95,18.190139],[95,19.451564],[95,20.71299],[95,21.974416],[95,23.235841],[95,24.497267],[95,25.758693],[95,27.020119],[95,28.281544],[95,29.54297],[95,30.804396],[95,32.065822],[95,33.327247],[95,34.588673],[95,35.850099],[95,37.111525],[95,38.37295],[95,39.634376],[95,40.895802],[95,42.157228],[95,43.418653],[95,44.680079],[95,45.941505],[95,47.202931],[95,48.464356],[95,49.725782],[95,50.987208],[95,52.248634],[95,53.510059],[95,54.771485],[95,56.032911],[95,57.294337],[95,58.555762],[95,59.817188],[95,61.078614],[95,62.34004],[95,63.601465],[95,64.862891],[95,66.124317],[95,67.385743],[95,68.647168],[95,69.908594],[95,71.17002],[95,72.431446],[95,73.692871],[95,74.954297],[95,76.215723],[95,77.477149],[95,78.738574],[95,80.0],[94.25,81.47096],[93.5,82.921615],[92.75,84.351107],[92.0,85.758581],[91.25,87.143192],[90.5,88.504102],[89.75,89.840485],[89.0,91.151531],[88.25,92.436443],[87.5,93.694444],[86.75,94.924779],[86.0,96.126712],[85.25,97.299533],[84.5,98.442561],[83.75,99.555141],[83.0,100.636647],[82.25,101.686487],[81.5,102.704102],[80.75,103.688968],[80.0,104.640597],[79.25,105.558539],[78.5,106.442384],[77.75,107.29176],[77.0,108.106339],[76.25,108.885833],[75.5,109.629997],[74.75,110.33863],[74.0,111.011576],[73.25,111.648722],[72.5,112.25],[71.75,112.815388],[71.0,113.344909],[70.25,113.83863],[69.5,114.296663],[68.75,114.719166],[68.0,115.106339],[67.25,115.458427],[66.5,115.775717],[65.75,116.058539],[65.0,116.307264],[64.25,116.522301],[63.5,116.704102],[62.75,116.853154],[62.0,116.96998],[61.25,117.055141],[60.5,117.109228],[59.75,117.132867],[59.0,117.126712],[58.25,117.091445],[57.5,117.027778],[56.75,116.936443],[56.0,116.818198],[55.25,116.673819],[54.5,116.504102],[53.75,116.309859],[53.0,116.091915],[52.25,115.851107],[51.5,115.588282],[50.75,115.304294],[50.0,115.0],[50.0,113.126667],[50.0,111.253333],[50.0,109.38],[50.0,107.506667],[50.0,105.633333],[50.0,103.76],[50.0,101.886667],[50.0,100.013333],[50.0,98.14],[50.0,96.266667],[50.0,94.393333],[50.0,92.52],[50.0,90.646667],[50.0,88.773333],[50.0,86.9],[50.0,85.026667],[50.0,83.153333],[50.0,81.28],[50.0,79.406667],[50.0,77.533333],[50.0,75.66],[50.0,73.786667],[50.0,71.913333],[50.0,70.04],[50.0,68.166667],[50.0,66.293333],[50.0,64.42],[50.0,62.546667],[50.0,60.673333],[50.0,58.8],[50.0,56.926667],[50.0,55.053333],[50.0,53.18],[50.0,51.306667],[50.0,49.433333],[50.0,47.56],[50.0,45.686667],[50.0,43.813333],[50.0,41.94],[50.0,40.066667],[50.0,38.193333],[50.0,36.32],[50.0,34.446667],[50.0,32.573333],[50.0,30.7],[50.0,28.826667],[50.0,26.953333],[50.0,25.08],[50.0,23.206667],[50.0,21.333333],[50.0,19.46],[50.0,17.586667],[50.0,15.713333],[50.0,13.84],[50.0,11.966667],[50.0,10.093333],[50.0,8.22],[50.0,6.346667],[50.0,4.473333],[50.0,2.6]]},"afterload_up":{"par":{"edv":120,"emax":2.875,"avo":100,"pes":140,"bump":6},"pts":[[58.695652,2.778835],[59.717391,2.803078],[60.73913,2.828075],[61.76087,2.85385],[62.782609,2.880428],[63.804348,2.907833],[64.826087,2.936091],[65.847826,2.965228],[66.869565,2.995273],[67.891304,3.026252],[68.913043,3.058196],[69.934783,3.091134],[70.956522,3.125098],[71.978261,3.160119],[73.0,3.196229],[74.021739,3.233464],[75.043478,3.271858],[76.065217,3.311447],[77.086957,3.352268],[78.108696,3.39436],[79.130435,3.437762],[80.152174,3.482514],[81.173913,3.52866],[82.195652,3.576243],[83.217391,3.625306],[84.23913,3.675897],[85.26087,3.728062],[86.282609,3.781851],[87.304348,3.837314],[88.326087,3.894504],[89.347826,3.953474],[90.369565,4.014279],[91.391304,4.076977],[92.413043,4.141627],[93.434783,4.208289],[94.456522,4.277026],[95.478261,4.347902],[96.5,4.420985],[97.521739,4.496342],[98.543478,4.574045],[99.565217,4.654167],[100.586957,4.736783],[101.608696,4.82197],[102.630435,4.909809],[103.652174,5.000382],[104.673913,5.093774],[105.695652,5.190073],[106.717391,5.28937],[107.73913,5.391758],[108.76087,5.497332],[109.782609,5.606193],[110.804348,5.718442],[111.826087,5.834185],[112.847826,5.953531],[113.869565,6.076592],[114.891304,6.203483],[115.913043,6.334324],[116.934783,6.469238],[117.956522,6.608351],[118.978261,6.751794],[120.0,6.899702],[120,8.451374],[120,10.003045],[120,11.554717],[120,13.106388],[120,14.65806],[120,16.209732],[120,17.761403],[120,19.313075],[120,20.864747],[120,22.416418],[120,23.96809],[120,25.519762],[120,27.071433],[120,28.623105],[120,30.174776],[120,31.726448],[120,33.27812],[120,34.829791],[120,36.381463],[120,37.933135],[120,39.484806],[120,41.036478],[120,42.58815],[120,44.139821],[120,45.691493],[120,47.243164],[120,48.794836],[120,50.346508],[120,51.898179],[120,53.449851],[120,55.001523],[120,56.553194],[120,58.104866],[120,59.656538],[120,61.208209],[120,62.759881],[120,64.311552],[120,65.863224],[120,67.414896],[120,68.966567],[120,70.518239],[120,72.069911],[120,73.621582],[120,75.173254],[120,76.724925],[120,78.276597],[120,79.828269],[120,81.37994],[120,82.931612],[120,84.483284],[120,86.034955],[120,87.586627],[120,89.138299],[120,90.68997],[120,92.241642],[120,93.793313],[120,95.344985],[120,96.896657],[120,98.448328],[120,100.0],[118.978261,101.636238],[117.956522,103.249393],[116.934783,104.838607],[115.913043,106.403026],[114.891304,107.941803],[113.869565,109.454102],[112.847826,110.939097],[111.826087,112.395975],[110.804348,113.823943],[109.782609,115.222222],[108.76087,116.590056],[107.73913,117.926712],[106.717391,119.231478],[105.695652,120.503673],[104.673913,121.742641],[103.652174,122.947758],[102.630435,124.118431],[101.608696,125.254102],[100.586957,126.354246],[99.565217,127.418375],[98.543478,128.446039],[97.521739,129.436828],[96.5,130.390371],[95.478261,131.306339],[94.456522,132.184444],[93.434783,133.024441],[92.413043,133.82613],[91.391304,134.589354],[90.369565,135.313999],[89.347826,136.0],[88.326087,136.647333],[87.304348,137.25602],[86.282609,137.82613],[85.26087,138.357774],[84.23913,138.851111],[83.217391,139.306339],[82.195652,139.723705],[81.173913,140.103495],[80.152174,140.446039],[79.130435,140.751708],[78.108696,141.020912],[77.086957,141.254102],[76.065217,141.451765],[75.043478,141.614425],[74.021739,141.742641],[73.0,141.837006],[71.978261,141.898145],[70.956522,141.926712],[69.934783,141.92339],[68.913043,141.888889],[67.891304,141.823943],[66.869565,141.729309],[65.847826,141.605763],[64.826087,141.454102],[63.804348,141.275136],[62.782609,141.069692],[61.76087,140.838607],[60.73913,140.582726],[59.717391,140.302905],[58.695652,140.0],[58.695652,137.712981],[58.695652,135.425961],[58.695652,133.138942],[58.695652,130.851922],[58.695652,128.564903],[58.695652,126.277884],[58.695652,123.990864],[58.695652,121.703845],[58.695652,119.416825],[58.695652,117.129806],[58.695652,114.842786],[58.695652,112.555767],[58.695652,110.268748],[58.695652,107.981728],[58.695652,105.694709],[58.695652,103.407689],[58.695652,101.12067],[58.695652,98.833651],[58.695652,96.546631],[58.695652,94.259612],[58.695652,91.972592],[58.695652,89.685573],[58.695652,87.398553],[58.695652,85.111534],[58.695652,82.824515],[58.695652,80.537495],[58.695652,78.250476],[58.695652,75.963456],[58.695652,73.676437],[58.695652,71.389418],[58.695652,69.102398],[58.695652,66.815379],[58.695652,64.528359],[58.695652,62.24134],[58.695652,59.95432],[58.695652,57.667301],[58.695652,55.380282],[58.695652,53.093262],[58.695652,50.806243],[58.695652,48.519223],[58.695652,46.232204],[58.695652,43.945185],[58.695652,41.658165],[58.695652,39.371146],[58.695652,37.084126],[58.695652,34.797107],[58.695652,32.510087],[58.695652,30.223068],[58.695652,27.936049],[58.695652,25.649029],[58.695652,23.36201],[58.695652,21.07499],[58.695652,18.787971],[58.695652,16.500952],[58.695652,14.213932],[58.695652,11.926913],[58.695652,9.639893],[58.695652,7.352874],[58.695652,5.065854],[58.695652,2.778835]]},"afterload_down":{"par":{"edv":120,"emax":2.875,"avo":65,"pes":95,"bump":6},"pts":[[43.043478,2.486985],[44.326087,2.506089],[45.608696,2.525942],[46.891304,2.546573],[48.173913,2.568015],[49.456522,2.590297],[50.73913,2.613453],[52.021739,2.637518],[53.304348,2.662526],[54.586957,2.688516],[55.869565,2.715525],[57.152174,2.743594],[58.434783,2.772764],[59.717391,2.803078],[61.0,2.834581],[62.282609,2.86732],[63.565217,2.901343],[64.847826,2.936701],[66.130435,2.973446],[67.413043,3.011633],[68.695652,3.051317],[69.978261,3.092559],[71.26087,3.135418],[72.543478,3.179958],[73.826087,3.226245],[75.108696,3.274349],[76.391304,3.324339],[77.673913,3.37629],[78.956522,3.43028],[80.23913,3.486387],[81.521739,3.544695],[82.804348,3.605291],[84.086957,3.668263],[85.369565,3.733706],[86.652174,3.801716],[87.934783,3.872394],[89.217391,3.945845],[90.5,4.022176],[91.782609,4.101503],[93.065217,4.183941],[94.347826,4.269613],[95.630435,4.358645],[96.913043,4.451171],[98.195652,4.547325],[99.478261,4.647252],[100.76087,4.751099],[102.043478,4.859019],[103.326087,4.971173],[104.608696,5.087727],[105.891304,5.208853],[107.173913,5.33473],[108.456522,5.465545],[109.73913,5.601492],[111.021739,5.742772],[112.304348,5.889594],[113.586957,6.042176],[114.869565,6.200743],[116.152174,6.36553],[117.434783,6.536782],[118.717391,6.714751],[120.0,6.899702],[120,7.86804],[120,8.836379],[120,9.804717],[120,10.773055],[120,11.741393],[120,12.709732],[120,13.67807],[120,14.646408],[120,15.614747],[120,16.583085],[120,17.551423],[120,18.519762],[120,19.4881],[120,20.456438],[120,21.424776],[120,22.393115],[120,23.361453],[120,24.329791],[120,25.29813],[120,26.266468],[120,27.234806],[120,28.203145],[120,29.171483],[120,30.139821],[120,31.108159],[120,32.076498],[120,33.044836],[120,34.013174],[120,34.981513],[120,35.949851],[120,36.918189],[120,37.886528],[120,38.854866],[120,39.823204],[120,40.791542],[120,41.759881],[120,42.728219],[120,43.696557],[120,44.664896],[120,45.633234],[120,46.601572],[120,47.569911],[120,48.538249],[120,49.506587],[120,50.474925],[120,51.443264],[120,52.411602],[120,53.37994],[120,54.348279],[120,55.316617],[120,56.284955],[120,57.253294],[120,58.221632],[120,59.18997],[120,60.158308],[120,61.126647],[120,62.094985],[120,63.063323],[120,64.031662],[120,65.0],[118.717391,66.305682],[117.434783,67.593837],[116.152174,68.863607],[114.869565,70.114137],[113.586957,71.344581],[112.304348,72.554102],[111.021739,73.741874],[109.73913,74.907087],[108.456522,76.048943],[107.173913,77.166667],[105.891304,78.259501],[104.608696,79.326712],[103.326087,80.367589],[102.043478,81.38145],[100.76087,82.367641],[99.478261,83.325536],[98.195652,84.254542],[96.913043,85.154102],[95.630435,86.02369],[94.347826,86.862819],[93.065217,87.671039],[91.782609,88.447939],[90.5,89.193149],[89.217391,89.906339],[87.934783,90.587222],[86.652174,91.235552],[85.369565,91.85113],[84.086957,92.433798],[82.804348,92.983444],[81.521739,93.5],[80.23913,93.983444],[78.956522,94.433798],[77.673913,94.85113],[76.391304,95.235552],[75.108696,95.587222],[73.826087,95.906339],[72.543478,96.193149],[71.26087,96.447939],[69.978261,96.671039],[68.695652,96.862819],[67.413043,97.02369],[66.130435,97.154102],[64.847826,97.254542],[63.565217,97.325536],[62.282609,97.367641],[61.0,97.38145],[59.717391,97.367589],[58.434783,97.326712],[57.152174,97.259501],[55.869565,97.166667],[54.586957,97.048943],[53.304348,96.907087],[52.021739,96.741874],[50.73913,96.554102],[49.456522,96.344581],[48.173913,96.114137],[46.891304,95.863607],[45.608696,95.593837],[44.326087,95.305682],[43.043478,95.0],[43.043478,93.458116],[43.043478,91.916233],[43.043478,90.374349],[43.043478,88.832466],[43.043478,87.290582],[43.043478,85.748699],[43.043478,84.206815],[43.043478,82.664931],[43.043478,81.123048],[43.043478,79.581164],[43.043478,78.039281],[43.043478,76.497397],[43.043478,74.955513],[43.043478,73.41363],[43.043478,71.871746],[43.043478,70.329863],[43.043478,68.787979],[43.043478,67.246096],[43.043478,65.704212],[43.043478,64.162328],[43.043478,62.620445],[43.043478,61.078561],[43.043478,59.536678],[43.043478,57.994794],[43.043478,56.452911],[43.043478,54.911027],[43.043478,53.369143],[43.043478,51.82726],[43.043478,50.285376],[43.043478,48.743493],[43.043478,47.201609],[43.043478,45.659726],[43.043478,44.117842],[43.043478,42.575958],[43.043478,41.034075],[43.043478,39.492191],[43.043478,37.950308],[43.043478,36.408424],[43.043478,34.86654],[43.043478,33.324657],[43.043478,31.782773],[43.043478,30.24089],[43.043478,28.699006],[43.043478,27.157123],[43.043478,25.615239],[43.043478,24.073355],[43.043478,22.531472],[43.043478,20.989588],[43.043478,19.447705],[43.043478,17.905821],[43.043478,16.363938],[43.043478,14.822054],[43.043478,13.28017],[43.043478,11.738287],[43.043478,10.196403],[43.043478,8.65452],[43.043478,7.112636],[43.043478,5.570752],[43.043478,4.028869],[43.043478,2.486985]]},"inotropy_up":{"par":{"edv":120,"emax":4.0,"avo":80,"pes":120,"bump":9},"pts":[[40.0,2.444491],[41.333333,2.462631],[42.666667,2.481511],[44.0,2.501162],[45.333333,2.521615],[46.666667,2.542902],[48.0,2.565059],[49.333333,2.588119],[50.666667,2.612121],[52.0,2.637102],[53.333333,2.663103],[54.666667,2.690164],[56.0,2.71833],[57.333333,2.747646],[58.666667,2.778158],[60.0,2.809915],[61.333333,2.842969],[62.666667,2.877371],[64.0,2.913177],[65.333333,2.950444],[66.666667,2.989233],[68.0,3.029604],[69.333333,3.071623],[70.666667,3.115357],[72.0,3.160875],[73.333333,3.208252],[74.666667,3.257561],[76.0,3.308883],[77.333333,3.3623],[78.666667,3.417896],[80.0,3.475762],[81.333333,3.535989],[82.666667,3.598674],[84.0,3.663917],[85.333333,3.731823],[86.666667,3.8025],[88.0,3.876061],[89.333333,3.952625],[90.666667,4.032313],[92.0,4.115253],[93.333333,4.201578],[94.666667,4.291426],[96.0,4.384941],[97.333333,4.482272],[98.666667,4.583576],[100.0,4.689013],[101.333333,4.798754],[102.666667,4.912973],[104.0,5.031854],[105.333333,5.155587],[106.666667,5.284368],[108.0,5.418406],[109.333333,5.557914],[110.666667,5.703115],[112.0,5.854242],[113.333333,6.011537],[114.666667,6.175251],[116.0,6.345646],[117.333333,6.522995],[118.666667,6.707582],[120.0,6.899702],[120,8.11804],[120,9.336379],[120,10.554717],[120,11.773055],[120,12.991393],[120,14.209732],[120,15.42807],[120,16.646408],[120,17.864747],[120,19.083085],[120,20.301423],[120,21.519762],[120,22.7381],[120,23.956438],[120,25.174776],[120,26.393115],[120,27.611453],[120,28.829791],[120,30.04813],[120,31.266468],[120,32.484806],[120,33.703145],[120,34.921483],[120,36.139821],[120,37.358159],[120,38.576498],[120,39.794836],[120,41.013174],[120,42.231513],[120,43.449851],[120,44.668189],[120,45.886528],[120,47.104866],[120,48.323204],[120,49.541542],[120,50.759881],[120,51.978219],[120,53.196557],[120,54.414896],[120,55.633234],[120,56.851572],[120,58.069911],[120,59.288249],[120,60.506587],[120,61.724925],[120,62.943264],[120,64.161602],[120,65.37994],[120,66.598279],[120,67.816617],[120,69.034955],[120,70.253294],[120,71.471632],[120,72.68997],[120,73.908308],[120,75.126647],[120,76.344985],[120,77.563323],[120,78.781662],[120,80.0],[118.666667,81.793246],[117.333333,83.562978],[116.0,85.30791],[114.666667,87.026761],[113.333333,88.71826],[112.0,90.381153],[110.666667,92.0142],[109.333333,93.616185],[108.0,95.185914],[106.666667,96.722222],[105.333333,98.223974],[104.0,99.690067],[102.666667,101.119439],[101.333333,102.511064],[100.0,103.863961],[98.666667,105.177192],[97.333333,106.449869],[96.0,107.681153],[94.666667,108.870257],[93.333333,110.016451],[92.0,111.119059],[90.666667,112.177465],[89.333333,113.191113],[88.0,114.159509],[86.666667,115.082221],[85.333333,115.958884],[84.0,116.789195],[82.666667,117.572919],[81.333333,118.309888],[80.0,119.0],[78.666667,119.643221],[77.333333,120.239586],[76.0,120.789195],[74.666667,121.292217],[73.333333,121.748888],[72.0,122.159509],[70.666667,122.524446],[69.333333,122.844131],[68.0,123.119059],[66.666667,123.349784],[65.333333,123.536924],[64.0,123.681153],[62.666667,123.783203],[61.333333,123.843859],[60.0,123.863961],[58.666667,123.844398],[57.333333,123.786106],[56.0,123.690067],[54.666667,123.557307],[53.333333,123.388889],[52.0,123.185914],[50.666667,122.949519],[49.333333,122.680867],[48.0,122.381153],[46.666667,122.051594],[45.333333,121.693427],[44.0,121.30791],[42.666667,120.896312],[41.333333,120.459912],[40.0,120.0],[40.0,118.040742],[40.0,116.081483],[40.0,114.122225],[40.0,112.162966],[40.0,110.203708],[40.0,108.244449],[40.0,106.285191],[40.0,104.325932],[40.0,102.366674],[40.0,100.407415],[40.0,98.448157],[40.0,96.488898],[40.0,94.52964],[40.0,92.570381],[40.0,90.611123],[40.0,88.651864],[40.0,86.692606],[40.0,84.733347],[40.0,82.774089],[40.0,80.81483],[40.0,78.855572],[40.0,76.896313],[40.0,74.937055],[40.0,72.977796],[40.0,71.018538],[40.0,69.059279],[40.0,67.100021],[40.0,65.140762],[40.0,63.181504],[40.0,61.222245],[40.0,59.262987],[40.0,57.303728],[40.0,55.34447],[40.0,53.385212],[40.0,51.425953],[40.0,49.466695],[40.0,47.507436],[40.0,45.548178],[40.0,43.588919],[40.0,41.629661],[40.0,39.670402],[40.0,37.711144],[40.0,35.751885],[40.0,33.792627],[40.0,31.833368],[40.0,29.87411],[40.0,27.914851],[40.0,25.955593],[40.0,23.996334],[40.0,22.037076],[40.0,20.077817],[40.0,18.118559],[40.0,16.1593],[40.0,14.200042],[40.0,12.240783],[40.0,10.281525],[40.0,8.322266],[40.0,6.363008],[40.0,4.403749],[40.0,2.444491]]},"inotropy_down":{"par":{"edv":120,"emax":2.0,"avo":80,"pes":105,"bump":4},"pts":[[62.5,2.872995],[63.458333,2.898458],[64.416667,2.924663],[65.375,2.951633],[66.333333,2.97939],[67.291667,3.007956],[68.25,3.037355],[69.208333,3.067612],[70.166667,3.098751],[71.125,3.130799],[72.083333,3.163781],[73.041667,3.197726],[74.0,3.23266],[74.958333,3.268613],[75.916667,3.305615],[76.875,3.343696],[77.833333,3.382888],[78.791667,3.423224],[79.75,3.464735],[80.708333,3.507457],[81.666667,3.551426],[82.625,3.596677],[83.583333,3.643247],[84.541667,3.691176],[85.5,3.740503],[86.458333,3.791269],[87.416667,3.843516],[88.375,3.897286],[89.333333,3.952625],[90.291667,4.009577],[91.25,4.068191],[92.208333,4.128515],[93.166667,4.190598],[94.125,4.254491],[95.083333,4.320249],[96.041667,4.387924],[97.0,4.457573],[97.958333,4.529254],[98.916667,4.603025],[99.875,4.678949],[100.833333,4.757086],[101.791667,4.837503],[102.75,4.920265],[103.708333,5.005441],[104.666667,5.093102],[105.625,5.183319],[106.583333,5.276168],[107.541667,5.371725],[108.5,5.470069],[109.458333,5.571281],[110.416667,5.675446],[111.375,5.782648],[112.333333,5.892978],[113.291667,6.006525],[114.25,6.123385],[115.208333,6.243653],[116.166667,6.367428],[117.125,6.494814],[118.083333,6.625916],[119.041667,6.760841],[120.0,6.899702],[120,8.11804],[120,9.336379],[120,10.554717],[120,11.773055],[120,12.991393],[120,14.209732],[120,15.42807],[120,16.646408],[120,17.864747],[120,19.083085],[120,20.301423],[120,21.519762],[120,22.7381],[120,23.956438],[120,25.174776],[120,26.393115],[120,27.611453],[120,28.829791],[120,30.04813],[120,31.266468],[120,32.484806],[120,33.703145],[120,34.921483],[120,36.139821],[120,37.358159],[120,38.576498],[120,39.794836],[120,41.013174],[120,42.231513],[120,43.449851],[120,44.668189],[120,45.886528],[120,47.104866],[120,48.323204],[120,49.541542],[120,50.759881],[120,51.978219],[120,53.196557],[120,54.414896],[120,55.633234],[120,56.851572],[120,58.069911],[120,59.288249],[120,60.506587],[120,61.724925],[120,62.943264],[120,64.161602],[120,65.37994],[120,66.598279],[120,67.816617],[120,69.034955],[120,70.253294],[120,71.471632],[120,72.68997],[120,73.908308],[120,75.126647],[120,76.344985],[120,77.563323],[120,78.781662],[120,80.0],[119.041667,81.035733],[118.083333,82.057003],[117.125,83.063238],[116.166667,84.053869],[115.208333,85.028332],[114.25,85.986068],[113.291667,86.926527],[112.333333,87.849169],[111.375,88.753462],[110.416667,89.638889],[109.458333,90.504945],[108.5,91.351141],[107.541667,92.177004],[106.583333,92.982078],[105.625,93.765927],[104.666667,94.528135],[103.708333,95.268306],[102.75,95.986068],[101.791667,96.681071],[100.833333,97.352991],[99.875,98.001526],[98.916667,98.626404],[97.958333,99.227377],[97.0,99.804226],[96.041667,100.356759],[95.083333,100.884813],[94.125,101.388253],[93.166667,101.866976],[92.208333,102.320907],[91.25,102.75],[90.291667,103.15424],[89.333333,103.533643],[88.375,103.888253],[87.416667,104.218146],[86.458333,104.523426],[85.5,104.804226],[84.541667,105.060711],[83.583333,105.293071],[82.625,105.501526],[81.666667,105.686324],[80.708333,105.847738],[79.75,105.986068],[78.791667,106.101639],[77.833333,106.194802],[76.875,106.265927],[75.916667,106.315411],[74.958333,106.34367],[74.0,106.351141],[73.041667,106.338278],[72.083333,106.305556],[71.125,106.253462],[70.166667,106.182502],[69.208333,106.093194],[68.25,105.986068],[67.291667,105.861665],[66.333333,105.720536],[65.375,105.563238],[64.416667,105.390336],[63.458333,105.202399],[62.5,105.0],[62.5,103.297883],[62.5,101.595766],[62.5,99.89365],[62.5,98.191533],[62.5,96.489416],[62.5,94.787299],[62.5,93.085183],[62.5,91.383066],[62.5,89.680949],[62.5,87.978832],[62.5,86.276716],[62.5,84.574599],[62.5,82.872482],[62.5,81.170365],[62.5,79.468249],[62.5,77.766132],[62.5,76.064015],[62.5,74.361898],[62.5,72.659782],[62.5,70.957665],[62.5,69.255548],[62.5,67.553431],[62.5,65.851315],[62.5,64.149198],[62.5,62.447081],[62.5,60.744964],[62.5,59.042848],[62.5,57.340731],[62.5,55.638614],[62.5,53.936497],[62.5,52.234381],[62.5,50.532264],[62.5,48.830147],[62.5,47.12803],[62.5,45.425914],[62.5,43.723797],[62.5,42.02168],[62.5,40.319563],[62.5,38.617447],[62.5,36.91533],[62.5,35.213213],[62.5,33.511096],[62.5,31.80898],[62.5,30.106863],[62.5,28.404746],[62.5,26.702629],[62.5,25.000513],[62.5,23.298396],[62.5,21.596279],[62.5,19.894162],[62.5,18.192046],[62.5,16.489929],[62.5,14.787812],[62.5,13.085695],[62.5,11.383579],[62.5,9.681462],[62.5,7.979345],[62.5,6.277228],[62.5,4.575112],[62.5,2.872995]]},"as":{"par":{"edv":120,"emax":2.875,"avo":80,"pes":175,"bump":28},"pts":[[70.869565,3.122167],[71.688406,3.150074],[72.507246,3.178676],[73.326087,3.207989],[74.144928,3.238031],[74.963768,3.26882],[75.782609,3.300375],[76.601449,3.332715],[77.42029,3.365858],[78.23913,3.399826],[79.057971,3.434639],[79.876812,3.470318],[80.695652,3.506884],[81.514493,3.544359],[82.333333,3.582767],[83.152174,3.622129],[83.971014,3.662471],[84.789855,3.703815],[85.608696,3.746188],[86.427536,3.789615],[87.246377,3.834122],[88.065217,3.879735],[88.884058,3.926483],[89.702899,3.974394],[90.521739,4.023496],[91.34058,4.073819],[92.15942,4.125394],[92.978261,4.178251],[93.797101,4.232423],[94.615942,4.287942],[95.434783,4.344842],[96.253623,4.403156],[97.072464,4.462922],[97.891304,4.524173],[98.710145,4.586948],[99.528986,4.651284],[100.347826,4.71722],[101.166667,4.784795],[101.985507,4.854052],[102.804348,4.92503],[103.623188,4.997774],[104.442029,5.072327],[105.26087,5.148734],[106.07971,5.227041],[106.898551,5.307296],[107.717391,5.389546],[108.536232,5.473843],[109.355072,5.560235],[110.173913,5.648776],[110.992754,5.739519],[111.811594,5.832519],[112.630435,5.927831],[113.449275,6.025514],[114.268116,6.125626],[115.086957,6.228228],[115.905797,6.333382],[116.724638,6.441151],[117.543478,6.5516],[118.362319,6.664795],[119.181159,6.780806],[120.0,6.899702],[120,8.11804],[120,9.336379],[120,10.554717],[120,11.773055],[120,12.991393],[120,14.209732],[120,15.42807],[120,16.646408],[120,17.864747],[120,19.083085],[120,20.301423],[120,21.519762],[120,22.7381],[120,23.956438],[120,25.174776],[120,26.393115],[120,27.611453],[120,28.829791],[120,30.04813],[120,31.266468],[120,32.484806],[120,33.703145],[120,34.921483],[120,36.139821],[120,37.358159],[120,38.576498],[120,39.794836],[120,41.013174],[120,42.231513],[120,43.449851],[120,44.668189],[120,45.886528],[120,47.104866],[120,48.323204],[120,49.541542],[120,50.759881],[120,51.978219],[120,53.196557],[120,54.414896],[120,55.633234],[120,56.851572],[120,58.069911],[120,59.288249],[120,60.506587],[120,61.724925],[120,62.943264],[120,64.161602],[120,65.37994],[120,66.598279],[120,67.816617],[120,69.034955],[120,70.253294],[120,71.471632],[120,72.68997],[120,73.908308],[120,75.126647],[120,76.344985],[120,77.563323],[120,78.781662],[120,80.0],[119.181159,84.605685],[118.362319,89.154575],[117.543478,93.642665],[116.724638,98.065972],[115.905797,102.420544],[115.086957,106.702476],[114.268116,110.907914],[113.449275,115.03307],[112.630435,119.074234],[111.811594,123.027778],[110.992754,126.890171],[110.173913,130.657987],[109.355072,134.327915],[108.536232,137.896768],[107.717391,141.36149],[106.898551,144.719166],[106.07971,147.967031],[105.26087,151.102476],[104.442029,154.123054],[103.623188,157.026489],[102.804348,159.810683],[101.985507,162.473717],[101.166667,165.013863],[100.347826,167.429582],[99.528986,169.719534],[98.710145,171.882577],[97.891304,173.917774],[97.072464,175.824391],[96.253623,177.601905],[95.434783,179.25],[94.615942,180.768571],[93.797101,182.157724],[92.978261,183.417774],[92.15942,184.549244],[91.34058,185.552868],[90.521739,186.429582],[89.702899,187.18053],[88.884058,187.807051],[88.065217,188.310683],[87.246377,188.693156],[86.427536,188.956387],[85.608696,189.102476],[84.789855,189.133698],[83.971014,189.0525],[83.152174,188.86149],[82.333333,188.563435],[81.514493,188.161249],[80.695652,187.657987],[79.876812,187.056837],[79.057971,186.361111],[78.23913,185.574234],[77.42029,184.699737],[76.601449,183.741247],[75.782609,182.702476],[74.963768,181.587211],[74.144928,180.399305],[73.326087,179.142665],[72.507246,177.821241],[71.688406,176.439018],[70.869565,175.0],[70.869565,172.135369],[70.869565,169.270739],[70.869565,166.406108],[70.869565,163.541478],[70.869565,160.676847],[70.869565,157.812217],[70.869565,154.947586],[70.869565,152.082956],[70.869565,149.218325],[70.869565,146.353694],[70.869565,143.489064],[70.869565,140.624433],[70.869565,137.759803],[70.869565,134.895172],[70.869565,132.030542],[70.869565,129.165911],[70.869565,126.301281],[70.869565,123.43665],[70.869565,120.572019],[70.869565,117.707389],[70.869565,114.842758],[70.869565,111.978128],[70.869565,109.113497],[70.869565,106.248867],[70.869565,103.384236],[70.869565,100.519606],[70.869565,97.654975],[70.869565,94.790344],[70.869565,91.925714],[70.869565,89.061083],[70.869565,86.196453],[70.869565,83.331822],[70.869565,80.467192],[70.869565,77.602561],[70.869565,74.737931],[70.869565,71.8733],[70.869565,69.008669],[70.869565,66.144039],[70.869565,63.279408],[70.869565,60.414778],[70.869565,57.550147],[70.869565,54.685517],[70.869565,51.820886],[70.869565,48.956256],[70.869565,46.091625],[70.869565,43.226994],[70.869565,40.362364],[70.869565,37.497733],[70.869565,34.633103],[70.869565,31.768472],[70.869565,28.903842],[70.869565,26.039211],[70.869565,23.174581],[70.869565,20.30995],[70.869565,17.445319],[70.869565,14.580689],[70.869565,11.716058],[70.869565,8.851428],[70.869565,5.986797],[70.869565,3.122167]]},"mr":{"par":{"edv":160,"emax":2.875,"avo":70,"pes":90,"bump":6,"mr":true},"pts":[[40.0,2.444491],[42.0,2.471977],[44.0,2.501162],[46.0,2.532152],[48.0,2.565059],[50.0,2.6],[52.0,2.637102],[54.0,2.676498],[56.0,2.71833],[58.0,2.762749],[60.0,2.809915],[62.0,2.859998],[64.0,2.913177],[66.0,2.969645],[68.0,3.029604],[70.0,3.093271],[72.0,3.160875],[74.0,3.23266],[76.0,3.308883],[78.0,3.38982],[80.0,3.475762],[82.0,3.567018],[84.0,3.663917],[86.0,3.766808],[88.0,3.876061],[90.0,3.99207],[92.0,4.115253],[94.0,4.246053],[96.0,4.384941],[98.0,4.532417],[100.0,4.689013],[102.0,4.855293],[104.0,5.031854],[106.0,5.219334],[108.0,5.418406],[110.0,5.629788],[112.0,5.854242],[114.0,6.092575],[116.0,6.345646],[118.0,6.614366],[120.0,6.899702],[122.0,7.202683],[124.0,7.524399],[126.0,7.866008],[128.0,8.228742],[130.0,8.613906],[132.0,9.022887],[134.0,9.457158],[136.0,9.918283],[138.0,10.407922],[140.0,10.927839],[142.0,11.479906],[144.0,12.06611],[146.0,12.688564],[148.0,13.349508],[150.0,14.051322],[152.0,14.796534],[154.0,15.587828],[156.0,16.428052],[158.0,17.320233],[160.0,18.267583],[159.928713,19.62178],[159.811872,20.975049],[159.66812,22.326462],[159.503528,23.675093],[159.32147,25.020019],[159.124164,26.360316],[158.913204,27.695067],[158.689802,29.023358],[158.454922,30.344276],[158.209349,31.656918],[157.953741,32.960383],[157.688656,34.253779],[157.414577,35.536219],[157.131927,36.806823],[156.84108,38.064722],[156.542367,39.309053],[156.236088,40.538963],[155.922514,41.753609],[155.601891,42.952159],[155.274444,44.133792],[154.94038,45.297697],[154.599889,46.443077],[154.253149,47.569147],[153.900325,48.675135],[153.54157,49.760283],[153.177028,50.823848],[152.806832,51.8651],[152.43111,52.883327],[152.049982,53.877829],[151.663559,54.847926],[151.271948,55.792953],[150.875252,56.712261],[150.473564,57.605222],[150.066978,58.471222],[149.655579,59.309669],[149.239451,60.119988],[148.818673,60.901623],[148.393321,61.654039],[147.963468,62.37672],[147.529183,63.06917],[147.090532,63.730916],[146.647581,64.361504],[146.200391,64.960501],[145.749022,65.527498],[145.29353,66.062104],[144.833971,66.563955],[144.370398,67.032706],[143.902862,67.468035],[143.431414,67.869645],[142.956102,68.237261],[142.476971,68.570629],[141.994068,68.869523],[141.507435,69.133736],[141.017116,69.363088],[140.523151,69.557422],[140.02558,69.716604],[139.524443,69.840526],[139.019776,69.929103],[138.511616,69.982273],[138.0,70.0],[136.366667,70.975127],[134.733333,71.938282],[133.1,72.888607],[131.466667,73.825248],[129.833333,74.747359],[128.2,75.654102],[126.566667,76.544652],[124.933333,77.418198],[123.3,78.273943],[121.666667,79.111111],[120.033333,79.928945],[118.4,80.726712],[116.766667,81.5037],[115.133333,82.259228],[113.5,82.992641],[111.866667,83.703313],[110.233333,84.390654],[108.6,85.054102],[106.966667,85.693135],[105.333333,86.307264],[103.7,86.896039],[102.066667,87.459051],[100.433333,87.995927],[98.8,88.506339],[97.166667,88.989999],[95.533333,89.446663],[93.9,89.87613],[92.266667,90.278242],[90.633333,90.652888],[89.0,91.0],[87.366667,91.319555],[85.733333,91.611576],[84.1,91.87613],[82.466667,92.11333],[80.833333,92.323333],[79.2,92.506339],[77.566667,92.662594],[75.933333,92.792384],[74.3,92.896039],[72.666667,92.97393],[71.033333,93.026468],[69.4,93.054102],[67.766667,93.05732],[66.133333,93.036647],[64.5,92.992641],[62.866667,92.925895],[61.233333,92.837033],[59.6,92.726712],[57.966667,92.595612],[56.333333,92.444444],[54.7,92.273943],[53.066667,92.084864],[51.433333,91.877985],[49.8,91.654102],[48.166667,91.414025],[46.533333,91.158581],[44.9,90.888607],[43.266667,90.604949],[41.633333,90.30846],[40.0,90.0],[40.001667,88.540742],[40.006667,87.081483],[40.015,85.622225],[40.026667,84.162966],[40.041667,82.703708],[40.06,81.244449],[40.081667,79.785191],[40.106667,78.325932],[40.135,76.866674],[40.166667,75.407415],[40.201667,73.948157],[40.24,72.488898],[40.281667,71.02964],[40.326667,69.570381],[40.375,68.111123],[40.426667,66.651864],[40.481667,65.192606],[40.54,63.733347],[40.601667,62.274089],[40.666667,60.81483],[40.735,59.355572],[40.806667,57.896313],[40.881667,56.437055],[40.96,54.977796],[41.041667,53.518538],[41.126667,52.059279],[41.215,50.600021],[41.306667,49.140762],[41.401667,47.681504],[41.5,46.222245],[41.601667,44.762987],[41.706667,43.303728],[41.815,41.84447],[41.926667,40.385212],[42.041667,38.925953],[42.16,37.466695],[42.281667,36.007436],[42.406667,34.548178],[42.535,33.088919],[42.666667,31.629661],[42.801667,30.170402],[42.94,28.711144],[43.081667,27.251885],[43.226667,25.792627],[43.375,24.333368],[43.526667,22.87411],[43.681667,21.414851],[43.84,19.955593],[44.001667,18.496334],[44.166667,17.037076],[44.335,15.577817],[44.506667,14.118559],[44.681667,12.6593],[44.86,11.200042],[45.041667,9.740783],[45.226667,8.281525],[45.415,6.822266],[45.606667,5.363008],[45.801667,3.903749],[46.0,2.444491],[45.4,2.444491],[44.8,2.444491],[44.2,2.444491],[43.6,2.444491],[43.0,2.444491],[42.4,2.444491],[41.8,2.444491],[41.2,2.444491],[40.6,2.444491],[40.0,2.444491]]}},"cf":{"normal":{"sl":[7,1,1],"cf":[0.384883,0.571202,0.838933,1.214077,1.721586,2.376491,3.171955,4.070065,5.004125,5.896171,6.681347,7.324346,7.820509,8.186084,8.446372,8.627212,8.750725,8.834102,8.889942,8.927142,8.951836,8.96819,8.979004,8.986148,8.990863],"vr":[7.0,7.0,7.0,7.0,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":1.998553},"volume_down":{"sl":[5,1,1],"cf":[0.384883,0.571202,0.838933,1.214077,1.721586,2.376491,3.171955,4.070065,5.004125,5.896171,6.681347,7.324346,7.820509,8.186084,8.446372,8.627212,8.750725,8.834102,8.889942,8.927142,8.951836,8.96819,8.979004,8.986148,8.990863],"vr":[5.0,5.0,5.0,5.0,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":1.299195},"volume_up":{"sl":[9,1,1],"cf":[0.384883,0.571202,0.838933,1.214077,1.721586,2.376491,3.171955,4.070065,5.004125,5.896171,6.681347,7.324346,7.820509,8.186084,8.446372,8.627212,8.750725,8.834102,8.889942,8.927142,8.951836,8.96819,8.979004,8.986148,8.990863],"vr":[9.0,9.0,9.0,9.0,9.0,8.5,8.0,7.5,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.0,0.0],"x0":2.728633},"inotropy_up":{"sl":[7,1.28,1],"cf":[0.872369,1.273364,1.826995,2.561052,3.483818,4.569119,5.75,6.930881,8.016182,8.938948,9.673005,10.226636,10.627631,10.909638,11.10388,11.23576,11.324428,11.38365,11.423032,11.449144,11.466423,11.477843,11.485383,11.49036,11.493643],"vr":[7.0,7.0,7.0,7.0,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":1.073636},"inotropy_down":{"sl":[7,0.72,1],"cf":[0.137664,0.206561,0.308268,0.456422,0.668096,0.962307,1.355955,1.856644,2.454014,3.114662,3.786706,4.414662,4.956523,5.392895,5.725181,5.967581,6.13893,6.257375,6.337991,6.392282,6.428585,6.452743,6.468769,6.479378,6.48639],"vr":[7.0,7.0,7.0,7.0,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":3.092404},"tpr_up":{"sl":[7,1,1.35],"cf":[0.307907,0.456962,0.671146,0.971262,1.377269,1.901193,2.537564,3.256052,4.0033,4.716937,5.345078,5.859476,6.256407,6.548867,6.757098,6.90177,7.00058,7.067281,7.111953,7.141713,7.161469,7.174552,7.183204,7.188918,7.192691],"vr":[5.185185,5.185185,5.185185,5.185185,5.185185,4.814815,4.444444,4.074074,3.703704,3.333333,2.962963,2.592593,2.222222,1.851852,1.481481,1.111111,0.740741,0.37037,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":1.865634},"tpr_down":{"sl":[7,1,0.78],"cf":[0.470413,0.698136,1.025362,1.483872,2.104161,2.904601,3.876834,4.974524,6.116153,7.206431,8.166091,8.951978,9.5584,10.005213,10.323344,10.54437,10.69533,10.797235,10.865484,10.910951,10.941133,10.961121,10.974339,10.98307,10.988833],"vr":[8.974359,8.974359,8.974359,8.974359,8.974359,8.333333,7.692308,7.051282,6.410256,5.769231,5.128205,4.487179,3.846154,3.205128,2.564103,1.923077,1.282051,0.641026,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"x0":2.08319}}},"pvPresets":[["normal","Normal","EDV 120 mL, ESV 50 mL, SV 70 mL, EF about 58%. The aortic valve opens near 80 mmHg (diastolic pressure).","L14 p6–7"],["preload_up","More filling (↑ preload)","More venous return or IV fluid: EDV and stroke volume rise and the loop widens; ESV and the pressures stay the same.","L14 p8"],["preload_down","Hemorrhage (↓ preload)","Dehydration or blood loss: EDV, stroke volume and venous return fall.","L14 p8"],["afterload_up","Hypertension (↑ afterload)","The aortic valve opens and closes at higher pressures and the ventricle empties less completely: ESV up, stroke volume down, EDV unchanged.","L14 p9"],["afterload_down","Vasodilation (↓ afterload)","The aortic valve opens and closes at lower pressures and the ventricle empties more: ESV down, stroke volume up.","L14 p9"],["inotropy_up","Sympathetic stimulation (↑ contractility)","The end-systolic line becomes steeper: more pressure at any volume, ESV down, stroke volume and EF up.","L14 p10"],["inotropy_down","Heart failure (↓ contractility)","The end-systolic line flattens: less pressure, ESV up, stroke volume and EF down.","L14 p10"],["as","Aortic stenosis","The LV must generate far higher pressure to eject through the narrowed valve: peak pressure up, ESV up, stroke volume down, EDV unchanged.","L14 p11"],["mr","Mitral regurgitation","Blood leaks back into the left atrium as soon as the ventricle contracts, so there is no true isovolumic contraction. EDV and total stroke volume rise; ESV falls.","L14 p11"]],"cfPresets":[["normal","Normal","The curves cross at RAP 2 mmHg and 5 L/min. Venous return reaches zero at the mean systemic pressure (7 mmHg).","L14 p15"],["volume_down","Hemorrhage","Less blood volume (or venodilation) lowers the mean systemic pressure: the venous return curve shifts left in parallel. CO and RAP fall.","L14 p16"],["volume_up","Transfusion / venoconstriction","More stressed volume raises the mean systemic pressure: the venous return curve shifts right in parallel. CO and RAP rise.","L14 p16"],["inotropy_up","Dobutamine (↑ contractility)","Only the cardiac function curve moves, up and to the left: CO rises and RAP falls.","L14 p17"],["inotropy_down","Acute MI (↓ contractility)","Only the cardiac function curve moves, down and to the right: CO falls and RAP rises.","L14 p17"],["tpr_up","Arteriolar constriction (↑ TPR)","Higher afterload rotates the cardiac function curve down; the venous return curve rotates counterclockwise about the same x-intercept. CO and VR fall.","L14 p18"],["tpr_down","Arteriolar dilation (↓ TPR)","The cardiac function curve rotates up and the venous return curve clockwise: CO and VR rise.","L14 p19"]]}</script>
+<script>
+/* Study-set navbar: Light/Dark switch, and links that carry the current mode. */
+(function(){
+  var root = document.documentElement, sys = matchMedia("(prefers-color-scheme: dark)"), k = "patho-cardio-theme";
+  function current(){ return root.getAttribute("data-theme") || (sys.matches ? "dark" : "light"); }
+  function show(){
+    document.getElementById("th-light").setAttribute("aria-pressed", current() === "light" ? "true" : "false");
+    document.getElementById("th-dark").setAttribute("aria-pressed", current() === "dark" ? "true" : "false");
+    document.querySelectorAll("#studynav .links a, a[data-studyset]").forEach(function(a){
+      a.href = a.getAttribute("href").split("?")[0] + "?theme=" + current();
+    });
+  }
+  function set(t){ root.setAttribute("data-theme", t); try { localStorage.setItem(k, t); } catch(e){} show(); }
+  document.getElementById("th-light").addEventListener("click", function(){ set("light"); });
+  document.getElementById("th-dark").addEventListener("click", function(){ set("dark"); });
+  if (sys.addEventListener) sys.addEventListener("change", show);
+  show();
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var D = JSON.parse(document.getElementById("data").textContent);
+var NS = "http://www.w3.org/2000/svg";
+function el(t, c, x){ var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+function sv(t, a){ var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); return e; }
+
+/* ---- models (same formulas as figs/pv.py and figs/curves.py) ---- */
+var V0 = 10;
+function edpvr(v){ return 2 + 0.6 * Math.exp(0.03 * (v - 50)); }
+function loop(p){
+  var esv = p.mr ? 40 : V0 + p.pes / p.emax, pts = [], n = 60, i, u, v;
+  for (i = 0; i <= n; i++){ v = esv + (p.edv - esv) * i / n; pts.push([v, edpvr(v)]); }
+  var edp = edpvr(p.edv), vs;
+  if (p.mr){ for (i = 1; i <= n; i++){ u = i / n; pts.push([p.edv - 22 * Math.pow(u, 1.4), edp + (p.avo - edp) * Math.sin(u * Math.PI / 2)]); } vs = p.edv - 22; }
+  else { for (i = 1; i <= n; i++) pts.push([p.edv, edp + (p.avo - edp) * i / n]); vs = p.edv; }
+  for (i = 1; i <= n; i++){ u = i / n; v = vs + (esv - vs) * u; pts.push([v, p.avo + (p.pes - p.avo) * (1 - (1 - u) * (1 - u)) + p.bump * Math.sin(Math.PI * u)]); }
+  var lo = edpvr(esv);
+  for (i = 1; i <= n; i++){ u = i / n; pts.push(p.mr ? [esv + 6 * u * u, p.pes - (p.pes - lo) * u] : [esv, p.pes - (p.pes - lo) * u]); }
+  if (p.mr) for (i = 1; i <= 10; i++) pts.push([esv + 6 - 6 * i / 10, lo]);
+  return pts;
+}
+function cf(x, q){ return q.cmax / (1 + Math.exp(-(x - q.c) / 1.2)); }
+function vr(x, q){ return Math.max(0, Math.min(q.msfp / q.rv, (q.msfp - x) / q.rv)); }
+function cfParams(msfp, k, r){
+  var q;
+  if (k === 1.28) q = {cmax: 11.5, c: 1.0}; else if (k === 0.72) q = {cmax: 6.5, c: 2.6};
+  else q = {cmax: 9 * k, c: 1.73 - 2.4 * (k - 1)};
+  q.cmax = r === 1.35 ? 7.2 : r === 0.78 ? 11.0 : q.cmax / Math.pow(r, 0.73);
+  q.msfp = msfp; q.rv = r; return q;
+}
+function cross(q){ var lo = -2, hi = 10, m; for (var i = 0; i < 60; i++){ m = (lo + hi) / 2; if (cf(m, q) < vr(m, q)) lo = m; else hi = m; } return lo; }
+
+/* ---- self-check against the Python reference ---- */
+(function(){
+  var bad = [];
+  Object.keys(D.ref.pv).forEach(function(k){
+    var r = D.ref.pv[k], pts = loop(r.par);
+    if (pts.length !== r.pts.length) bad.push("pv " + k);
+    else pts.forEach(function(p, i){ if (Math.abs(p[0] - r.pts[i][0]) > 1e-5 || Math.abs(p[1] - r.pts[i][1]) > 1e-5) bad.push("pv " + k + " #" + i); });
+  });
+  Object.keys(D.ref.cf).forEach(function(k){
+    var r = D.ref.cf[k], q = cfParams(r.sl[0], r.sl[1], r.sl[2]);
+    for (var i = 0; i < 25; i++){ var x = -2 + i * 0.5;
+      if (Math.abs(cf(x, q) - r.cf[i]) > 1e-5 || Math.abs(vr(x, q) - r.vr[i]) > 1e-5) bad.push("cf " + k + " #" + i); }
+    if (Math.abs(cross(q) - r.x0) > 1e-5) bad.push("cross " + k);
+  });
+  window.__selftest = bad;
+  if (bad.length){ document.getElementById("selftest").style.display = "block"; console.error("self-check failed", bad.slice(0, 10)); }
+})();
+
+/* ---- drawing ---- */
+function chart(box, xr, yr, xt, yt, xlab, ylab){
+  var W = 460, H = 300, x0 = 58, y0 = 12, w = 380, h = 240;
+  var s = sv("svg", {viewBox: "0 0 " + W + " " + H});
+  var X = function(x){ return x0 + (x - xr[0]) / (xr[1] - xr[0]) * w; }, Y = function(y){ return y0 + h - (y - yr[0]) / (yr[1] - yr[0]) * h; };
+  yt.forEach(function(v){ s.appendChild(sv("line", {x1: x0, x2: x0 + w, y1: Y(v), y2: Y(v), "class": "fg-thin"}));
+    var t = sv("text", {x: x0 - 6, y: Y(v) + 4, "text-anchor": "end", "class": "fg-small"}); t.textContent = v; s.appendChild(t); });
+  xt.forEach(function(v){ var t = sv("text", {x: X(v), y: y0 + h + 16, "text-anchor": "middle", "class": "fg-small"}); t.textContent = v; s.appendChild(t); });
+  s.appendChild(sv("line", {x1: x0, x2: x0 + w, y1: y0 + h, y2: y0 + h, "class": "fg-axis"}));
+  s.appendChild(sv("line", {x1: x0, x2: x0, y1: y0, y2: y0 + h, "class": "fg-axis"}));
+  var tx = sv("text", {x: x0 + w / 2, y: H - 4, "text-anchor": "middle", "class": "fg-small"}); tx.textContent = xlab; s.appendChild(tx);
+  var ty = sv("text", {transform: "translate(14 " + (y0 + h / 2) + ") rotate(-90)", "text-anchor": "middle", "class": "fg-small"}); ty.textContent = ylab; s.appendChild(ty);
+  var g = sv("g", {}); s.appendChild(g);
+  box.innerHTML = ""; box.appendChild(s);
+  return {g: g, X: X, Y: Y, clip: function(pts){ return pts.filter(function(p){ return p[1] >= yr[0] - 1e-9 && p[1] <= yr[1] + 1e-9; }); }};
+}
+function pathOf(c, pts){ return pts.map(function(p, i){ return (i ? "L" : "M") + c.X(p[0]).toFixed(1) + " " + c.Y(p[1]).toFixed(1); }).join(" "); }
+function arrow(now, base, dec){ var d = now - base; if (Math.abs(d) < Math.pow(10, -dec) * 0.6) return ""; return d > 0 ? ' <span class="up">▲</span>' : ' <span class="dn">▼</span>'; }
+
+/* ---- PV panel ---- */
+var pvState = Object.assign({hr: 72}, D.ref.pv.normal.par), pvPreset = "normal";
+var NORM = D.ref.pv.normal.par;
+function stats(p){ var pts = loop(p), vs = pts.map(function(q){ return q[0]; }), ps = pts.map(function(q){ return q[1]; });
+  var edv = Math.max.apply(null, vs), esv = Math.min.apply(null, vs);
+  return {edv: edv, esv: esv, sv: edv - esv, ef: (edv - esv) / edv, peak: Math.max.apply(null, ps), pts: pts}; }
+var PVS = [["edv", "Preload (EDV)", 90, 170, 1, " mL"], ["avo", "Afterload (aortic diastolic)", 60, 110, 1, " mmHg"],
+           ["emax", "Contractility (ESPVR slope)", 1.6, 4.5, 0.05, ""], ["hr", "Heart rate", 50, 150, 1, " bpm"]];
+function drawPV(){
+  var valve = pvState.mr || pvPreset === "as";
+  var ymax = pvState.pes > 150 || pvPreset === "as" ? 220 : 160;
+  var c = chart(document.getElementById("pvsvg"), [0, 180], [0, ymax], [0, 40, 80, 120, 160], ymax > 160 ? [0, 40, 80, 120, 160, 200] : [0, 40, 80, 120, 160],
+                "Left ventricular volume (mL)", "LV pressure (mmHg)");
+  var n = stats(NORM), s = stats(pvState);
+  c.g.appendChild(sv("path", {d: pathOf(c, n.pts), "class": "fg-guide"}));
+  var ev = Math.min(180, V0 + ymax / pvState.emax);
+  if (!pvState.mr) c.g.appendChild(sv("path", {d: pathOf(c, [[V0, 0], [ev, pvState.emax * (ev - V0)]]), "class": "fg-axis fg-c2 fg-dash"}));
+  c.g.appendChild(sv("path", {d: pathOf(c, s.pts), "class": "fg-trace fg-c1 fg-w2"}));
+  var co = s.sv * pvState.hr / 1000, con = n.sv * 72 / 1000;
+  var rows = [["", "Now", "Normal"], ["EDV (mL)", s.edv.toFixed(0) + arrow(s.edv, n.edv, 0), n.edv.toFixed(0)],
+              ["ESV (mL)", s.esv.toFixed(0) + arrow(s.esv, n.esv, 0), n.esv.toFixed(0)],
+              [pvState.mr ? "SV, total (mL)" : "SV (mL)", s.sv.toFixed(0) + arrow(s.sv, n.sv, 0), n.sv.toFixed(0)],
+              ["EF", (100 * s.ef).toFixed(0) + "%" + arrow(s.ef * 100, n.ef * 100, 0), (100 * n.ef).toFixed(0) + "%"],
+              ["Peak pressure (mmHg)", s.peak.toFixed(0) + arrow(s.peak, n.peak, 0), n.peak.toFixed(0)],
+              ["CO = SV × HR (L/min)", co.toFixed(1) + arrow(co, con, 1), con.toFixed(1)]];
+  var t = document.getElementById("pvro"); t.innerHTML = "";
+  rows.forEach(function(r, i){ var tr = t.insertRow(); r.forEach(function(x){ var td = el(i ? "td" : "th"); td.innerHTML = x; tr.appendChild(td); }); });
+  document.querySelectorAll("#pvsl input").forEach(function(inp){ inp.disabled = valve; });
+}
+function pvSliders(){
+  var box = document.getElementById("pvsl"); box.innerHTML = "";
+  PVS.forEach(function(d){
+    var row = el("div", "sl"), lab = el("label", null, d[1]), inp = el("input"), out = el("output");
+    inp.type = "range"; inp.min = d[2]; inp.max = d[3]; inp.step = d[4]; inp.value = pvState[d[0]]; inp.id = "pv-" + d[0]; lab.htmlFor = inp.id;
+    out.textContent = (+inp.value).toFixed(d[4] < 1 ? 2 : 0) + d[5];
+    inp.addEventListener("input", function(){
+      pvState[d[0]] = +inp.value; if (d[0] === "avo") pvState.pes = 1.4 * pvState.avo + 3;
+      out.textContent = (+inp.value).toFixed(d[4] < 1 ? 2 : 0) + d[5];
+      pvPreset = "custom"; markPresets("pvp", null); document.getElementById("pvnote").textContent = "Custom settings. Compare each value with the normal column."; drawPV();
+    });
+    row.appendChild(lab); row.appendChild(inp); row.appendChild(out); box.appendChild(row);
+  });
+}
+function markPresets(id, key){ document.querySelectorAll("#" + id + " .chip").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.k === key ? "true" : "false"); }); }
+D.pvPresets.forEach(function(p){
+  var b = el("button", "chip", p[1]); b.type = "button"; b.dataset.k = p[0];
+  b.addEventListener("click", function(){
+    pvPreset = p[0]; pvState = Object.assign({hr: pvState.hr}, D.ref.pv[p[0]].par); pvSliders(); markPresets("pvp", p[0]);
+    document.getElementById("pvnote").textContent = p[2] + " (" + p[3] + ")" + (p[0] === "as" || p[0] === "mr" ? " Sliders are off for valve lesions; choose Normal to use them again." : "");
+    drawPV();
+  });
+  document.getElementById("pvp").appendChild(b);
+});
+
+/* ---- curves panel ---- */
+var cfSl = {msfp: 7, k: 1, r: 1};
+var CFS = [["msfp", "Blood volume / venous tone (mean systemic pressure)", 4, 10, 0.5, " mmHg"],
+           ["k", "Contractility", 0.6, 1.4, 0.01, "×"], ["r", "Total peripheral resistance", 0.7, 1.4, 0.01, "×"]];
+function drawCF(){
+  var c = chart(document.getElementById("cfsvg"), [-2, 10], [0, 14], [-2, 0, 2, 4, 6, 8, 10], [0, 2, 4, 6, 8, 10, 12, 14],
+                "Right atrial pressure (mmHg)", "CO or venous return (L/min)");
+  var xs = []; for (var i = 0; i <= 600; i++) xs.push(-2 + i * 0.02);
+  var qn = cfParams(7, 1, 1), q = cfParams(cfSl.msfp, cfSl.k, cfSl.r);
+  c.g.appendChild(sv("path", {d: pathOf(c, xs.map(function(x){ return [x, cf(x, qn)]; })), "class": "fg-guide"}));
+  c.g.appendChild(sv("path", {d: pathOf(c, xs.map(function(x){ return [x, vr(x, qn)]; })), "class": "fg-guide"}));
+  c.g.appendChild(sv("path", {d: pathOf(c, xs.map(function(x){ return [x, cf(x, q)]; })), "class": "fg-trace fg-c1 fg-w2"}));
+  c.g.appendChild(sv("path", {d: pathOf(c, xs.map(function(x){ return [x, vr(x, q)]; })), "class": "fg-trace fg-c2 fg-w2"}));
+  var x0 = cross(q), xn = cross(qn);
+  c.g.appendChild(sv("circle", {cx: c.X(x0), cy: c.Y(vr(x0, q)), r: 5.5, "class": "fg-ink"}));
+  var rows = [["", "Now", "Normal"], ["Right atrial pressure (mmHg)", x0.toFixed(1) + arrow(x0, xn, 1), xn.toFixed(1)],
+              ["Cardiac output = venous return (L/min)", vr(x0, q).toFixed(1) + arrow(vr(x0, q), vr(xn, qn), 1), vr(xn, qn).toFixed(1)],
+              ["Mean systemic pressure (mmHg)", cfSl.msfp.toFixed(1) + arrow(cfSl.msfp, 7, 1), "7.0"]];
+  var t = document.getElementById("cfro"); t.innerHTML = "";
+  rows.forEach(function(r, i){ var tr = t.insertRow(); r.forEach(function(x){ var td = el(i ? "td" : "th"); td.innerHTML = x; tr.appendChild(td); }); });
+}
+function cfSliders(){
+  var box = document.getElementById("cfsl"); box.innerHTML = "";
+  CFS.forEach(function(d){
+    var row = el("div", "sl"), lab = el("label", null, d[1]), inp = el("input"), out = el("output");
+    inp.type = "range"; inp.min = d[2]; inp.max = d[3]; inp.step = d[4]; inp.value = cfSl[d[0]]; inp.id = "cf-" + d[0]; lab.htmlFor = inp.id;
+    out.textContent = (+inp.value).toFixed(d[4] < 0.5 ? 2 : 1) + d[5];
+    inp.addEventListener("input", function(){
+      cfSl[d[0]] = +inp.value; out.textContent = (+inp.value).toFixed(d[4] < 0.5 ? 2 : 1) + d[5];
+      markPresets("cfp", null); document.getElementById("cfnote").textContent = "Custom settings. Compare with the dashed normal curves."; drawCF();
+    });
+    row.appendChild(lab); row.appendChild(inp); row.appendChild(out); box.appendChild(row);
+  });
+}
+D.cfPresets.forEach(function(p){
+  var b = el("button", "chip", p[1]); b.type = "button"; b.dataset.k = p[0];
+  b.addEventListener("click", function(){
+    var s = D.ref.cf[p[0]].sl; cfSl = {msfp: s[0], k: s[1], r: s[2]}; cfSliders(); markPresets("cfp", p[0]);
+    document.getElementById("cfnote").textContent = p[2] + " (" + p[3] + ")"; drawCF();
+  });
+  document.getElementById("cfp").appendChild(b);
+});
+pvSliders(); cfSliders(); markPresets("pvp", "normal"); markPresets("cfp", "normal");
+document.getElementById("pvnote").textContent = D.pvPresets[0][2]; document.getElementById("cfnote").textContent = D.cfPresets[0][2];
+drawPV(); drawCF();
+})();
+</script>
+</body></html>

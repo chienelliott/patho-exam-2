@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardiology Study Tools</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700&display=swap">
+<style>
+/* Study-set home page: one card per tool. Same palette and type as the concept map. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#18201d; --ink2:#4c5753; --ink3:#87918d; --line:#d9dfdc;
+  --c-blue:#2563c9; --c-pink:#c42f78; --c-green:#1d8045; --c-amber:#b8650a; --c-violet:#7445d6;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --nav-max:900px; --nav-gutter:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121614; --surface:#1b201e; --ink:#e7ecea; --ink2:#a9b3af; --ink3:#6f7a76; --line:#2d3532;
+    --c-blue:#6ea6f7; --c-pink:#f27bb4; --c-green:#53c483; --c-amber:#f2a94a; --c-violet:#b296f6; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1b201e; --ink:#e7ecea; --ink2:#a9b3af; --ink3:#6f7a76; --line:#2d3532;
+  --c-blue:#6ea6f7; --c-pink:#f27bb4; --c-green:#53c483; --c-amber:#f2a94a; --c-violet:#b296f6; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body)}
+main{max-width:900px;margin:0 auto;padding:40px 20px 56px}
+.eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:0 0 6px}
+h1{font:700 clamp(26px,4vw,36px)/1.1 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+.lede{color:var(--ink2);margin:0 0 28px;max-width:62ch}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+a.card{display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;transition:border-color .15s,transform .15s}
+a.card:hover{border-color:var(--c);transform:translateY(-2px)}
+a.card:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+.card .icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 14%,var(--surface));color:var(--c)}
+.card .icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card h2{font:700 21px/1.2 var(--f-display);margin:0}
+.card p{margin:0;color:var(--ink2)}
+.card ul{margin:0;padding-left:18px;color:var(--ink2);font-size:14.5px}
+.card li{margin:2px 0}
+.card .go{margin-top:auto;padding-top:6px;font-weight:700;color:var(--c)}
+.foot{margin-top:28px;font-size:13.5px;color:var(--ink3)}
+@media (prefers-reduced-motion:reduce){a.card{transition:none}a.card:hover{transform:none}}
+
+.studynav{border-bottom:1px solid var(--line);background:var(--bg);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.studynav .in{max-width:var(--nav-max,1680px);margin:0 auto;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;
+  padding:8px max(var(--nav-gutter,16px),env(safe-area-inset-right,0px)) 8px max(var(--nav-gutter,16px),env(safe-area-inset-left,0px))}
+.studynav .set{font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.01em;white-space:nowrap}
+.studynav .links{display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:0}
+.studynav .links a{font-size:14px;color:var(--ink2);text-decoration:none;padding:5px 11px;border-radius:999px}
+.studynav .links a:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.studynav .links a[aria-current="page"]{color:var(--ink);font-weight:700;background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.studynav a:focus-visible,.studynav button:focus-visible{outline:2px solid var(--ink2);outline-offset:2px}
+.studynav .themetoggle{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--surface,var(--card))}
+.studynav .themetoggle button{font:inherit;font-size:13px;border:none;background:none;color:var(--ink2);border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.studynav .themetoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.studynav .themetoggle svg{display:inline-block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+@media print{.studynav{display:none}}
+:root{--nav-max:1100px}main{max-width:1100px}
+</style>
+<script>
+(function(){
+  var k = "patho-cardio-theme", t = null, m = /[?&]theme=(light|dark)\b/.exec(location.search);
+  if (m){ t = m[1]; try { localStorage.setItem(k, t); } catch(e){} }
+  else { try { t = localStorage.getItem(k); } catch(e){} }
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+</head>
+<body>
+<nav class="studynav" id="studynav" aria-label="Cardiology Pathophysiology">
+  <div class="in">
+    <span class="set">Cardiology Pathophysiology</span>
+    <div class="links"><a href="index.html" aria-current="page">Home</a><a href="quiz.html">Practice quiz</a><a href="EKG.html">ECG trainer</a><a href="cardiac_cycle.html">Cardiac cycle</a><a href="hemodynamics.html">Hemodynamics</a><a href="summary.html">Summary sheets</a></div>
+    <div class="themetoggle" role="group" aria-label="Color theme">
+      <button type="button" id="th-light" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M3 13l1.1-1.1M11.9 4.1L13 3"/></svg>Light</button>
+      <button type="button" id="th-dark" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6z"/></svg>Dark</button>
+    </div>
+  </div>
+</nav>
+<main>
+  <p class="eyebrow">MBS Pathophysiology · Cardiology · Lectures 9–15</p>
+  <h1>Cardiology Study Tools</h1>
+  <p class="lede">Practice questions, ECG strips to read, and interactive models of the cardiac cycle and hemodynamics. Every strip, loop, curve and diagram was drawn by code and checked against the lecture criteria.</p>
+  <div class="cards">
+    <a class="card" data-studyset href="quiz.html" style="--c:var(--c-blue)">
+      <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+      <h2>Practice Quiz</h2>
+      <p>228 single-best-answer questions with explanations, 76 of them built on ECG strips, PV loops, function curves and flow diagrams.</p>
+      <ul><li>Filter by lecture, difficulty, priority and status</li><li>JVP handout questions are marked</li><li>Progress is saved in your browser</li></ul>
+      <span class="go">Open the quiz →</span>
+    </a>
+    <a class="card" data-studyset href="EKG.html" style="--c:var(--c-pink)">
+      <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12h5l2-5 3 10 3-8 2 3h5"/></svg></span>
+      <h2>ECG Strip Trainer</h2>
+      <p>139 lead II strips covering every rhythm in L10–L15, read with the same worksheet as the homework.</p>
+      <ul><li>Rate, rhythm, P waves, PR, QRS, diagnosis</li><li>Or diagnosis only for quick drilling</li><li>Results tracked by rhythm</li></ul>
+      <span class="go">Start reading strips →</span>
+    </a>
+    <a class="card" data-studyset href="cardiac_cycle.html" style="--c:var(--c-green)">
+      <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></svg></span>
+      <h2>Cardiac Cycle Explorer</h2>
+      <p>One heartbeat with every trace lined up: pressures, volume, ECG, JVP, heart sounds, valves and the PV loop.</p>
+      <ul><li>Drag a cursor or press play</li><li>Jump to any phase</li><li>Explanation of what happens in each phase</li></ul>
+      <span class="go">Explore the cycle →</span>
+    </a>
+    <a class="card" data-studyset href="hemodynamics.html" style="--c:var(--c-amber)">
+      <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
+      <h2>Hemodynamics Sandbox</h2>
+      <p>Change preload, afterload, contractility, blood volume and resistance, and see the PV loop and function curves respond.</p>
+      <ul><li>Buttons for each L14 scenario</li><li>Sliders to explore in between</li><li>Normal heart always shown for comparison</li></ul>
+      <span class="go">Open the sandbox →</span>
+    </a>
+    <a class="card" data-studyset href="summary.html" style="--c:var(--c-violet)">
+      <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg></span>
+      <h2>Summary Sheets</h2>
+      <p>Arrhythmia atlas, look-alike tables, JVP patterns, congenital heart disease, formulas and normal values.</p>
+      <ul><li>Printable</li><li>Same verified strips and diagrams</li><li>Lecture page on every row</li></ul>
+      <span class="go">Open the sheets →</span>
+    </a>
+  </div>
+  <p class="foot">Keep all six files in the same folder so the links work. Questions marked From the JVP handout test the handout rather than the lecture slides.</p>
+</main>
+<script>
+/* Study-set navbar: Light/Dark switch, and links that carry the current mode. */
+(function(){
+  var root = document.documentElement, sys = matchMedia("(prefers-color-scheme: dark)"), k = "patho-cardio-theme";
+  function current(){ return root.getAttribute("data-theme") || (sys.matches ? "dark" : "light"); }
+  function show(){
+    document.getElementById("th-light").setAttribute("aria-pressed", current() === "light" ? "true" : "false");
+    document.getElementById("th-dark").setAttribute("aria-pressed", current() === "dark" ? "true" : "false");
+    document.querySelectorAll("#studynav .links a, a[data-studyset]").forEach(function(a){
+      a.href = a.getAttribute("href").split("?")[0] + "?theme=" + current();
+    });
+  }
+  function set(t){ root.setAttribute("data-theme", t); try { localStorage.setItem(k, t); } catch(e){} show(); }
+  document.getElementById("th-light").addEventListener("click", function(){ set("light"); });
+  document.getElementById("th-dark").addEventListener("click", function(){ set("dark"); });
+  if (sys.addEventListener) sys.addEventListener("change", show);
+  show();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cardiac Cycle Explorer</title>
+<script>
+(function(){
+  var k = "patho-cardio-theme", t = null, m = /[?&]theme=(light|dark)\b/.exec(location.search);
+  if (m){ t = m[1]; try { localStorage.setItem(k, t); } catch(e){} }
+  else { try { t = localStorage.getItem(k); } catch(e){} }
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+<style>:root{
+  --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1f; --ink2:#55555c; --ink3:#86868b;
+  --line:#e2e0db; --fill:#efede8; --accent:#2f5bd3; --accent-ink:#ffffff;
+  --ok:#1f7a45; --ok-bg:#e5f4ea; --bad:#b4342b; --bad-bg:#fbe9e7; --flag:#c98a04;
+  --r:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416; --card:#1e1e21; --ink:#ececee; --ink2:#a9a9b0; --ink3:#77777e;
+    --line:#2f2f34; --fill:#28282c; --accent:#7c9cff; --accent-ink:#0e0e10;
+    --ok:#5fcf8c; --ok-bg:#16301f; --bad:#ff8a7f; --bad-bg:#3a1d1a; --flag:#f2b632;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1e1e21; --ink:#ececee; --ink2:#a9a9b0; --ink3:#77777e;
+  --line:#2f2f34; --fill:#28282c; --accent:#7c9cff; --accent-ink:#0e0e10;
+  --ok:#5fcf8c; --ok-bg:#16301f; --bad:#ff8a7f; --bad-bg:#3a1d1a; --flag:#f2b632;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;color:inherit}
+.wrap{max-width:820px;margin:0 auto;padding:0 16px 48px}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top{max-width:820px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.top h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.01em}
+.top .sub{font-size:13px;color:var(--ink2)}
+.top .grow{flex:1;min-width:0}
+.bar{height:4px;background:var(--fill);border-radius:2px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.themetoggle{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--card)}
+.themetoggle button{font:inherit;font-size:13px;border:none;background:none;color:var(--ink2);border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.themetoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.themetoggle button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.themetoggle svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-top:16px}
+details.panel>summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;display:flex;align-items:center;gap:8px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:rotate(45deg);transition:transform .15s}
+details.panel[open]>summary::after{transform:rotate(-135deg)}
+.pbody{padding:0 16px 14px}
+.count{font-weight:400;color:var(--ink2);font-size:14px}
+
+.frow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);width:84px;flex:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 11px;font-size:14px;cursor:pointer;user-select:none}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip:focus-visible,.opt:focus-visible,.iconbtn:focus-visible,.nbtn:focus-visible,.navgrid button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.frow .sp{flex:1}
+.fhelp{font-size:12.5px;line-height:1.45;color:var(--ink3);margin:-4px 0 10px 90px}
+.fhelp b{font-weight:600;color:var(--ink2)}
+@media (max-width:560px){.fhelp{margin-left:0}}
+.linkbtn{background:none;border:none;color:var(--accent);cursor:pointer;padding:2px 4px;font-size:14px}
+
+.card{padding:20px 20px 16px}
+.meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);margin-bottom:10px}
+.meta .grow{flex:1}
+.flagbtn{border:1px solid var(--line);background:none;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:13px;color:var(--ink2)}
+.flagbtn[aria-pressed="true"]{color:var(--flag);border-color:var(--flag)}
+.stem{font-size:18px;line-height:1.55;margin:0 0 16px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;border:1px solid var(--line);background:var(--card);border-radius:var(--r);padding:11px 14px;cursor:pointer;transition:border-color .12s,background .12s}
+.opt:hover:not([disabled]){border-color:var(--ink3);background:var(--fill)}
+.opt .k{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--ink2)}
+.opt[disabled]{cursor:default}
+.opt.correct{border-color:var(--ok);background:var(--ok-bg)}
+.opt.correct .k{background:var(--ok);border-color:var(--ok);color:var(--card)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opt.wrong .k{background:var(--bad);border-color:var(--bad);color:var(--card)}
+.opt.dim{opacity:.55}
+/* Cross-out, matching the CUSM quiz (build_questions.py): the x sits OUTSIDE
+   the option so a cross-out is never one mis-aimed pixel from answering; it
+   is a quiet glyph that only gains presence on hover or when on; a crossed
+   row fades uniformly and strikes through. */
+.optrow{display:flex;gap:4px;align-items:stretch}
+.optrow .opt{flex:1 1 auto;min-width:0}
+.opt.xed{opacity:.42;cursor:default;background:var(--fill)}
+.opt.xed .t{text-decoration:line-through;text-decoration-thickness:1.5px}
+.opt.xed:hover:not([disabled]){background:var(--fill);border-color:var(--line)}
+/* A crossed-out option that turns out to be the answer must come back at
+   full strength: restate everything .xed changed. */
+.opt.xed.correct{opacity:1;background:var(--ok-bg);border-color:var(--ok)}
+.opt.xed.correct .t{text-decoration:none}
+.xbtn{flex:0 0 30px;border:none;background:none;cursor:pointer;color:var(--ink3);opacity:.38;font-size:17px;font-weight:400;line-height:1;border-radius:var(--r);font-family:inherit;padding:0;transition:opacity .14s ease,background .14s ease,color .14s ease}
+.xbtn:hover{opacity:1;background:var(--fill);color:var(--ink)}
+.xbtn.on{opacity:.8;color:var(--bad);background:none}
+.xbtn.on:hover{opacity:1;background:var(--bad-bg)}
+.xbtn:disabled{opacity:.14;background:none;cursor:default}
+.xbtn.on:disabled{opacity:.3;color:var(--bad)}
+.xbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.result{margin-top:14px;border-radius:var(--r);padding:12px 14px;background:var(--fill);font-size:15px}
+.result b.ok{color:var(--ok)} .result b.bad{color:var(--bad)}
+.result .src{color:var(--ink2);font-size:13px;margin-top:6px}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;margin-left:6px;color:var(--ink2);background:var(--card)}
+.nav{display:flex;gap:8px;margin-top:16px;align-items:center}
+.nbtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer}
+.nbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.nbtn[disabled]{opacity:.4;cursor:default}
+.nav .grow{flex:1}
+.hint{font-size:12px;color:var(--ink3);margin-top:10px}
+.empty{padding:28px 20px;text-align:center;color:var(--ink2)}
+
+.navgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px}
+.navhead{grid-column:1/-1;font-size:13px;color:var(--ink2);margin:10px 0 0;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.navhead:first-child{margin-top:0}
+.navhead b{color:var(--ink);font-weight:600}
+.navhead span{color:var(--ink3)}
+.navgrid button{position:relative;border:1px solid var(--line);background:var(--card);border-radius:6px;padding:5px 0;font-size:12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.navgrid button.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.navgrid button.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.navgrid button.cur{outline:2px solid var(--accent);outline-offset:1px}
+.navgrid button.fl::after{content:"";position:absolute;top:2px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--flag)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 0 0}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-ok::before{background:var(--ok-bg);border-color:var(--ok)}
+.legend .l-bad::before{background:var(--bad-bg);border-color:var(--bad)}
+.legend .l-fl::before{background:var(--flag);border-color:var(--flag);border-radius:50%}
+
+table.prog{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+table.prog th,table.prog td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+table.prog th:first-child,table.prog td:first-child{text-align:left}
+table.prog th{font-weight:600;color:var(--ink2);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.danger{border:1px solid var(--bad);color:var(--bad);background:none;border-radius:8px;padding:7px 12px;cursor:pointer;margin:4px 8px 4px 0}
+.danger:hover{background:var(--bad-bg)}
+.note{font-size:14px;color:var(--ink2)}
+.note li{margin:6px 0}
+.warn{font-size:13px;color:var(--bad);margin-top:8px}
+@media (max-width:560px){
+  .flabel{width:100%}
+  .stem{font-size:17px}
+  .card{padding:16px 14px 14px}
+  .top .sub{display:none}
+}
+/* Figures in questions. build_quiz.py appends this file only when a quiz has
+   figures, so quizzes without them are unchanged. Figure SVGs carry no colors
+   of their own: they use the fg-* classes below, which follow the light/dark
+   theme through the same custom properties as the rest of the page. */
+:root{
+  --fg-paper:#fff7f7; --fg-minor:#f6caca; --fg-major:#e48f8f; --fg-trace:#1d1d1f;
+  --fg-c1:#2f5bd3; --fg-c2:#c0392b; --fg-c3:#1f7a45; --fg-c4:#a05a00; --fg-c5:#7b3fb3;
+  --fg-oxy:#d0352b; --fg-deoxy:#2f5bd3; --fg-mixed:#8a3fa6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fg-paper:#1b1718; --fg-minor:#3a2a2c; --fg-major:#6b4246; --fg-trace:#f2f2f4;
+    --fg-c1:#7c9cff; --fg-c2:#ff8a7f; --fg-c3:#5fcf8c; --fg-c4:#f2b632; --fg-c5:#c39bf0;
+    --fg-oxy:#ff7a70; --fg-deoxy:#7c9cff; --fg-mixed:#c08ae0;
+  }
+}
+:root[data-theme="dark"]{
+  --fg-paper:#1b1718; --fg-minor:#3a2a2c; --fg-major:#6b4246; --fg-trace:#f2f2f4;
+  --fg-c1:#7c9cff; --fg-c2:#ff8a7f; --fg-c3:#5fcf8c; --fg-c4:#f2b632; --fg-c5:#c39bf0;
+  --fg-oxy:#ff7a70; --fg-deoxy:#7c9cff; --fg-mixed:#c08ae0;
+}
+.fig{margin:0 0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig svg{display:block;width:100%;height:auto;max-width:100%}
+.fig svg.fg-strip{min-width:560px}
+.result .fig{margin:12px 0 4px}
+.badge{display:inline-block;font-size:12px;border:1px solid var(--flag);color:var(--flag);border-radius:999px;padding:0 8px}
+
+.fg-paper{fill:var(--fg-paper)}
+.fg-minor{stroke:var(--fg-minor);stroke-width:.6;fill:none}
+.fg-major{stroke:var(--fg-major);stroke-width:1.1;fill:none}
+.fg-trace{stroke:var(--fg-trace);stroke-width:1.6;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.fg-axis{stroke:var(--ink2);stroke-width:1.2;fill:none}
+.fg-guide{stroke:var(--ink3);stroke-width:1;fill:none;stroke-dasharray:4 4}
+.fg-thin{stroke:var(--line);stroke-width:1;fill:none}
+.fg-text{fill:var(--ink);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.fg-small{fill:var(--ink2);font:11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.fg-bold{font-weight:650}
+.fg-c1{stroke:var(--fg-c1)} .fg-c2{stroke:var(--fg-c2)} .fg-c3{stroke:var(--fg-c3)} .fg-c4{stroke:var(--fg-c4)} .fg-c5{stroke:var(--fg-c5)}
+.fg-f1{fill:var(--fg-c1)} .fg-f2{fill:var(--fg-c2)} .fg-f3{fill:var(--fg-c3)} .fg-f4{fill:var(--fg-c4)} .fg-f5{fill:var(--fg-c5)}
+.fg-ink{fill:var(--ink)} .fg-card{fill:var(--card)} .fg-fill{fill:var(--fill)}
+.fg-oxy{stroke:var(--fg-oxy);fill:var(--fg-oxy)} .fg-deoxy{stroke:var(--fg-deoxy);fill:var(--fg-deoxy)} .fg-mixed{stroke:var(--fg-mixed);fill:var(--fg-mixed)}
+.fg-box{fill:var(--card);stroke:var(--ink2);stroke-width:1.3}
+.fg-dash{stroke-dasharray:5 4}
+.fg-w2{stroke-width:2.4}
+.fg-halo{paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round}
+
+:root{--nav-max:1100px;--page-max:1100px}
+
+.studynav{border-bottom:1px solid var(--line);background:var(--bg);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.studynav .in{max-width:var(--nav-max,1680px);margin:0 auto;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;
+  padding:8px max(var(--nav-gutter,16px),env(safe-area-inset-right,0px)) 8px max(var(--nav-gutter,16px),env(safe-area-inset-left,0px))}
+.studynav .set{font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.01em;white-space:nowrap}
+.studynav .links{display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:0}
+.studynav .links a{font-size:14px;color:var(--ink2);text-decoration:none;padding:5px 11px;border-radius:999px}
+.studynav .links a:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.studynav .links a[aria-current="page"]{color:var(--ink);font-weight:700;background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.studynav a:focus-visible,.studynav button:focus-visible{outline:2px solid var(--ink2);outline-offset:2px}
+.studynav .themetoggle{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:var(--surface,var(--card))}
+.studynav .themetoggle button{font:inherit;font-size:13px;border:none;background:none;color:var(--ink2);border-radius:999px;padding:4px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.studynav .themetoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.studynav .themetoggle svg{display:inline-block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+@media print{.studynav{display:none}}
+
+.wrap{max-width:var(--page-max,980px);margin:0 auto;padding:0 16px 56px}
+h1{font-size:24px;margin:22px 0 4px;letter-spacing:-.01em}
+.lead{color:var(--ink2);margin:0 0 16px;max-width:760px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-top:16px;padding:16px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--ink2)} .small{font-size:13px}
+.src{color:var(--ink3);font-size:12.5px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+/* Stacked on narrow screens, the phase description goes last, so its changing
+   length never pushes the valves or the PV loop around while the cycle plays. */
+@media (max-width:900px){.grid{display:flex;flex-direction:column;gap:0}.left,.right{display:contents}#phase{order:9}}
+.chart svg{width:100%;height:auto;display:block;touch-action:none}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.ctl input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
+.phase h2{font-size:18px;margin:0 0 2px}
+.phase .tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;margin-right:6px;color:var(--ink2)}
+.phase p{margin:8px 0 0;font-size:15px;line-height:1.5}
+.valves{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.valve{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13.5px;display:flex;justify-content:space-between;gap:6px}
+.valve b{font-weight:600}
+.valve.open{border-color:var(--ok);background:var(--ok-bg)} .valve.open span{color:var(--ok)}
+.valve span{color:var(--ink3)}
+.vals{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;margin-top:10px;font-variant-numeric:tabular-nums}
+.vals span:nth-child(even){text-align:right;font-weight:600}
+.pvbox svg{width:100%;max-width:340px;height:auto;display:block;margin:0 auto}
+</style></head>
+<body>
+<nav class="studynav" id="studynav" aria-label="Cardiology Pathophysiology">
+  <div class="in">
+    <span class="set">Cardiology Pathophysiology</span>
+    <div class="links"><a href="index.html">Home</a><a href="quiz.html">Practice quiz</a><a href="EKG.html">ECG trainer</a><a href="cardiac_cycle.html" aria-current="page">Cardiac cycle</a><a href="hemodynamics.html">Hemodynamics</a><a href="summary.html">Summary sheets</a></div>
+    <div class="themetoggle" role="group" aria-label="Color theme">
+      <button type="button" id="th-light" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M3 13l1.1-1.1M11.9 4.1L13 3"/></svg>Light</button>
+      <button type="button" id="th-dark" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6z"/></svg>Dark</button>
+    </div>
+  </div>
+</nav>
+<main class="wrap">
+
+<h1>Cardiac cycle explorer</h1>
+<p class="lead">One heartbeat at 75 bpm (0.8 s). Drag across the traces, use the slider, click a phase name above the chart, or press play: every trace, the valves and the point on the pressure–volume loop move together. Valve events are marked MC (mitral closes), AO (aortic opens), AC (aortic closes) and MO (mitral opens).</p>
+<div class="grid">
+  <div class="left">
+  <div class="panel">
+    <div class="chart fig" id="chart" role="img" aria-label="Wiggers diagram with a movable time cursor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 570" data-fig="cycle-explorer"><rect x="117.2" y="4" width="91.1" height="22" rx="0" class="fg-card" data-phase="atrial" style="cursor:pointer"/><text x="162.8" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">atrial sys.</text><rect x="208.4" y="4" width="35.1" height="22" rx="0" class="fg-fill" data-phase="ivc" style="cursor:pointer"/><text x="225.9" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">IVC</text><rect x="243.5" y="4" width="69.5" height="22" rx="0" class="fg-card" data-phase="ej1" style="cursor:pointer"/><text x="278.2" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">rapid ej.</text><rect x="313" y="4" width="104.6" height="22" rx="0" class="fg-fill" data-phase="ej2" style="cursor:pointer"/><text x="365.3" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">reduced ej.</text><rect x="417.6" y="4" width="58" height="22" rx="0" class="fg-card" data-phase="ivr" style="cursor:pointer"/><text x="446.6" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">IVR</text><rect x="475.7" y="4" width="80.3" height="22" rx="0" class="fg-fill" data-phase="fill" style="cursor:pointer"/><text x="515.8" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">rapid fill</text><rect x="556" y="4" width="54" height="22" rx="0" class="fg-card" data-phase="dias" style="cursor:pointer"/><rect x="70" y="4" width="47.3" height="22" rx="0" class="fg-card" data-phase="dias" style="cursor:pointer"/><text x="583" y="19" text-anchor="middle" class="fg-small" style="pointer-events:none">diastasis</text><line x1="208.4" y1="30" x2="208.4" y2="514" class="fg-guide"/><text x="211.4" y="42" text-anchor="start" class="fg-small fg-bold">MC</text><line x1="243.5" y1="30" x2="243.5" y2="514" class="fg-guide"/><text x="246.5" y="42" text-anchor="start" class="fg-small fg-bold">AO</text><line x1="417.6" y1="30" x2="417.6" y2="514" class="fg-guide"/><text x="420.6" y="42" text-anchor="start" class="fg-small fg-bold">AC</text><line x1="475.7" y1="30" x2="475.7" y2="514" class="fg-guide"/><text x="478.7" y="42" text-anchor="start" class="fg-small fg-bold">MO</text><line x1="70" y1="204" x2="610" y2="204" class="fg-axis"/><line x1="70" y1="34" x2="70" y2="204" class="fg-axis"/><line x1="70" y1="204" x2="70" y2="208" class="fg-axis" data-role="xtick" data-plot="p" data-value="0"/><text x="70" y="220" text-anchor="middle" class="fg-small"></text><line x1="205" y1="204" x2="205" y2="208" class="fg-axis" data-role="xtick" data-plot="p" data-value="0.2"/><text x="205" y="220" text-anchor="middle" class="fg-small"></text><line x1="340" y1="204" x2="340" y2="208" class="fg-axis" data-role="xtick" data-plot="p" data-value="0.4"/><text x="340" y="220" text-anchor="middle" class="fg-small"></text><line x1="475" y1="204" x2="475" y2="208" class="fg-axis" data-role="xtick" data-plot="p" data-value="0.6"/><text x="475" y="220" text-anchor="middle" class="fg-small"></text><line x1="610" y1="204" x2="610" y2="208" class="fg-axis" data-role="xtick" data-plot="p" data-value="0.8"/><text x="610" y="220" text-anchor="middle" class="fg-small"></text><line x1="66" y1="204" x2="70" y2="204" class="fg-axis" data-role="ytick" data-plot="p" data-value="0"/><text x="63" y="208" text-anchor="end" class="fg-small">0</text><line x1="66" y1="155.4" x2="70" y2="155.4" class="fg-axis" data-role="ytick" data-plot="p" data-value="40"/><text x="63" y="159.4" text-anchor="end" class="fg-small">40</text><line x1="66" y1="106.9" x2="70" y2="106.9" class="fg-axis" data-role="ytick" data-plot="p" data-value="80"/><text x="63" y="110.9" text-anchor="end" class="fg-small">80</text><line x1="66" y1="58.3" x2="70" y2="58.3" class="fg-axis" data-role="ytick" data-plot="p" data-value="120"/><text x="63" y="62.3" text-anchor="end" class="fg-small">120</text><text transform="translate(32 119) rotate(-90)" text-anchor="middle" class="fg-small">Pressure (mmHg)</text><path d="M70 97 L241.4 106.8 L242.8 105.6 L248.2 96.4 L253.6 88.3 L259 81.3 L263.1 77 L267.1 73.4 L271.1 70.6 L279.2 66.3 L286 63 L291.4 60.8 L296.8 59.1 L302.2 58.1 L306.2 57.7 L317 57.8 L327.8 58.3 L340 59.3 L354.8 60.9 L365.6 62.9 L377.8 66.5 L389.9 71 L412.9 80.6 L416.9 82.5 L421 85 L422.3 88.6 L423.7 90 L425.1 90.7 L426.4 90.1 L429.1 87.2 L430.4 86.1 L431.8 85.4 L434.5 84.8 L438.6 84.4 L442.6 84.8 L449.4 86.4 L454.8 87.2 L502 90.3 L608.6 96.9" class="fg-trace fg-c2" data-role="aorta" data-plot="p"/><path d="M70 198.1 L121.3 198 L130.8 197.1 L151 194 L160.4 193.4 L165.9 193.6 L171.2 194 L191.5 197.1 L198.2 197.8 L207.7 197.3 L209.1 197.1 L210.4 196.2 L211.7 194.8 L213.1 192.8 L215.8 187.5 L218.5 180.9 L225.2 162.7 L229.3 150.1 L236.1 124.6 L238.8 115.5 L241.4 108.3 L245.5 100.6 L250.9 91.5 L255 85.5 L260.4 78.5 L264.4 74.2 L268.4 70.7 L271.1 68.8 L279.2 64.3 L286 61 L291.4 58.8 L296.8 57.1 L302.2 56.1 L306.2 55.9 L315.7 56.1 L326.5 57 L338.6 58.5 L354.8 60.9 L365.6 63.4 L377.8 67.2 L414.2 81.5 L419.6 84.1 L422.3 86.1 L423.7 87.6 L426.4 91.5 L429.1 96.5 L433.1 105.5 L442.6 128.9 L446.6 138.1 L462.8 172 L466.9 179.5 L470.9 185.7 L473.6 188.8 L475 190 L481.8 195.2 L491.2 196.3 L502 197.1 L515.5 197.7 L534.4 198 L608.6 198.1" class="fg-trace fg-c1" data-role="lv" data-plot="p"/><path d="M70 197.3 L121.3 197.2 L130.8 196 L151 192 L156.4 191.4 L161.8 191.3 L165.9 191.4 L171.2 192 L191.5 196 L200.9 197.2 L209.1 197.2 L223.9 195.6 L230.7 195.4 L236.1 195.8 L250.9 197.9 L273.8 199.4 L286 199.9 L296.8 200 L307.6 199.6 L319.8 198.7 L346.8 196.1 L360.2 195 L416.9 192.6 L468.2 190 L475 190 L480.4 191.5 L487.1 193 L493.9 194 L502 195 L518.2 196.2 L538.5 196.8 L565.5 197.2 L608.6 197.3" class="fg-trace fg-c3" data-role="la" data-plot="p"/><text x="353.5" y="48.6" text-anchor="start" class="fg-small fg-bold">Aorta</text><text x="272.5" y="131.1" text-anchor="start" class="fg-small fg-bold">LV</text><text x="502" y="177.3" text-anchor="start" class="fg-small fg-bold">LA</text><line x1="70" y1="298" x2="610" y2="298" class="fg-axis"/><line x1="70" y1="228" x2="70" y2="298" class="fg-axis"/><line x1="70" y1="298" x2="70" y2="302" class="fg-axis" data-role="xtick" data-plot="vol" data-value="0"/><text x="70" y="314" text-anchor="middle" class="fg-small"></text><line x1="205" y1="298" x2="205" y2="302" class="fg-axis" data-role="xtick" data-plot="vol" data-value="0.2"/><text x="205" y="314" text-anchor="middle" class="fg-small"></text><line x1="340" y1="298" x2="340" y2="302" class="fg-axis" data-role="xtick" data-plot="vol" data-value="0.4"/><text x="340" y="314" text-anchor="middle" class="fg-small"></text><line x1="475" y1="298" x2="475" y2="302" class="fg-axis" data-role="xtick" data-plot="vol" data-value="0.6"/><text x="475" y="314" text-anchor="middle" class="fg-small"></text><line x1="610" y1="298" x2="610" y2="302" class="fg-axis" data-role="xtick" data-plot="vol" data-value="0.8"/><text x="610" y="314" text-anchor="middle" class="fg-small"></text><line x1="66" y1="298" x2="70" y2="298" class="fg-axis" data-role="ytick" data-plot="vol" data-value="40"/><text x="63" y="302" text-anchor="end" class="fg-small">40</text><line x1="66" y1="266.9" x2="70" y2="266.9" class="fg-axis" data-role="ytick" data-plot="vol" data-value="80"/><text x="63" y="270.9" text-anchor="end" class="fg-small">80</text><line x1="66" y1="235.8" x2="70" y2="235.8" class="fg-axis" data-role="ytick" data-plot="vol" data-value="120"/><text x="63" y="239.8" text-anchor="end" class="fg-small">120</text><text transform="translate(32 263) rotate(-90)" text-anchor="middle" class="fg-small">LV volume (mL)</text><path d="M70 249.6 L117.2 246.7 L125.3 246.4 L132.1 245.8 L146.9 243.8 L179.3 238 L194.2 236.2 L203.7 235.8 L241.4 235.8 L242.8 236.2 L253.6 243.2 L265.8 250.4 L275.2 255.5 L286 260.9 L299.5 267 L314.3 272.8 L327.8 277.3 L342.7 281.4 L357.6 284.7 L372.4 287.1 L387.2 288.8 L403.4 289.9 L418.3 290.2 L475 290.2 L481.8 284.3 L488.5 278.8 L495.2 273.9 L502 269.5 L511.4 264.2 L520.9 259.9 L530.4 256.6 L539.8 254.4 L545.2 253.6 L550.6 253.1 L556 252.9 L608.6 249.7" class="fg-trace fg-c1" data-role="vol" data-plot="vol"/><line x1="70" y1="378" x2="610" y2="378" class="fg-axis"/><line x1="70" y1="322" x2="70" y2="378" class="fg-axis"/><line x1="70" y1="378" x2="70" y2="382" class="fg-axis" data-role="xtick" data-plot="ecg" data-value="0"/><text x="70" y="394" text-anchor="middle" class="fg-small"></text><line x1="205" y1="378" x2="205" y2="382" class="fg-axis" data-role="xtick" data-plot="ecg" data-value="0.2"/><text x="205" y="394" text-anchor="middle" class="fg-small"></text><line x1="340" y1="378" x2="340" y2="382" class="fg-axis" data-role="xtick" data-plot="ecg" data-value="0.4"/><text x="340" y="394" text-anchor="middle" class="fg-small"></text><line x1="475" y1="378" x2="475" y2="382" class="fg-axis" data-role="xtick" data-plot="ecg" data-value="0.6"/><text x="475" y="394" text-anchor="middle" class="fg-small"></text><line x1="610" y1="378" x2="610" y2="382" class="fg-axis" data-role="xtick" data-plot="ecg" data-value="0.8"/><text x="610" y="394" text-anchor="middle" class="fg-small"></text><line x1="66" y1="364" x2="70" y2="364" class="fg-axis" data-role="ytick" data-plot="ecg" data-value="0"/><text x="63" y="368" text-anchor="end" class="fg-small">0</text><line x1="66" y1="336" x2="70" y2="336" class="fg-axis" data-role="ytick" data-plot="ecg" data-value="1"/><text x="63" y="340" text-anchor="end" class="fg-small">1</text><text transform="translate(32 350) rotate(-90)" text-anchor="middle" class="fg-small">ECG (mV)</text><path d="M70 364 L74 363.8 L78.1 363.3 L90.2 360.9 L94.3 360.2 L98.3 359.8 L101 359.8 L103.8 359.9 L107.8 360.4 L121.3 363.1 L126.7 363.8 L130.8 364 L178 364 L186.1 366.4 L187.4 366 L205 331.1 L206.3 332.7 L222.5 369.1 L223.9 371.2 L238.8 364 L286 364 L294.1 363.7 L302.2 363 L311.6 361.7 L331.9 358.1 L340 356.9 L349.4 355.9 L358.9 355.6 L364.3 355.9 L369.7 356.6 L376.4 358 L388.6 361.2 L394 362.5 L399.4 363.4 L404.8 363.9 L502 364 L608.6 364" class="fg-trace" data-role="ecg" data-plot="ecg"/><line x1="70" y1="466" x2="610" y2="466" class="fg-axis"/><line x1="70" y1="402" x2="70" y2="466" class="fg-axis"/><line x1="70" y1="466" x2="70" y2="470" class="fg-axis" data-role="xtick" data-plot="ra" data-value="0"/><text x="70" y="482" text-anchor="middle" class="fg-small"></text><line x1="205" y1="466" x2="205" y2="470" class="fg-axis" data-role="xtick" data-plot="ra" data-value="0.2"/><text x="205" y="482" text-anchor="middle" class="fg-small"></text><line x1="340" y1="466" x2="340" y2="470" class="fg-axis" data-role="xtick" data-plot="ra" data-value="0.4"/><text x="340" y="482" text-anchor="middle" class="fg-small"></text><line x1="475" y1="466" x2="475" y2="470" class="fg-axis" data-role="xtick" data-plot="ra" data-value="0.6"/><text x="475" y="482" text-anchor="middle" class="fg-small"></text><line x1="610" y1="466" x2="610" y2="470" class="fg-axis" data-role="xtick" data-plot="ra" data-value="0.8"/><text x="610" y="482" text-anchor="middle" class="fg-small"></text><line x1="66" y1="466" x2="70" y2="466" class="fg-axis" data-role="ytick" data-plot="ra" data-value="0"/><text x="63" y="470" text-anchor="end" class="fg-small">0</text><line x1="66" y1="437.6" x2="70" y2="437.6" class="fg-axis" data-role="ytick" data-plot="ra" data-value="4"/><text x="63" y="441.6" text-anchor="end" class="fg-small">4</text><line x1="66" y1="409.1" x2="70" y2="409.1" class="fg-axis" data-role="ytick" data-plot="ra" data-value="8"/><text x="63" y="413.1" text-anchor="end" class="fg-small">8</text><text transform="translate(32 434) rotate(-90)" text-anchor="middle" class="fg-small">JVP (mmHg)</text><path d="M70 437.2 L90.2 437.4 L93 437.1 L95.6 436.3 L98.3 434.9 L102.4 432.1 L106.4 428.6 L115.9 419.4 L118.6 417.1 L121.3 415.1 L124 413.6 L126.7 412.5 L129.4 411.9 L130.8 411.9 L132.1 412 L134.8 412.5 L137.5 413.6 L140.2 415.2 L142.9 417.2 L145.6 419.5 L155.1 428.7 L159.1 432.2 L161.8 434.2 L164.5 435.8 L167.2 436.9 L168.5 437.2 L171.2 437.5 L198.2 437.5 L200.9 437.2 L202.3 436.7 L205 435.4 L207.7 433.6 L213.1 429.6 L215.8 427.9 L218.5 426.7 L219.8 426.4 L222.5 426.2 L225.2 426.7 L227.9 427.9 L230.7 429.6 L238.8 435.6 L241.4 437.1 L242.8 437.6 L244.2 438 L253.6 439.3 L263.1 441 L286 445.8 L296.8 448 L304.9 449.4 L313 450.5 L319.8 451.1 L327.8 451.4 L334.6 451.3 L341.3 450.7 L348.1 449.8 L353.5 448.8 L360.2 447.2 L365.6 445.8 L372.4 443.6 L384.6 439.3 L411.5 428.9 L418.3 426.5 L425.1 424.3 L431.8 422.4 L437.2 421.1 L442.6 420 L448 419.1 L461.5 424.9 L477.7 431.2 L491.2 435.9 L502 439.1 L511.4 441.3 L520.9 442.8 L530.4 443.7 L539.8 443.8 L547.9 443.4 L556 442.7 L581.6 439.2 L591.1 438.1 L600.6 437.4 L608.6 437.2" class="fg-trace fg-c5" data-role="ra" data-plot="ra"/><text x="130.8" y="406.9" text-anchor="middle" class="fg-small fg-bold">a</text><text x="221.2" y="421.2" text-anchor="middle" class="fg-small fg-bold">c</text><text x="448" y="414.1" text-anchor="middle" class="fg-small fg-bold">v</text><text x="327.8" y="465.4" text-anchor="middle" class="fg-small fg-bold">x′</text><text x="537.1" y="457.8" text-anchor="middle" class="fg-small fg-bold">y</text><line x1="70" y1="530" x2="610" y2="530" class="fg-axis"/><line x1="70" y1="490" x2="70" y2="530" class="fg-axis"/><line x1="70" y1="530" x2="70" y2="534" class="fg-axis" data-role="xtick" data-plot="snd" data-value="0"/><text x="70" y="546" text-anchor="middle" class="fg-small">0.0</text><line x1="205" y1="530" x2="205" y2="534" class="fg-axis" data-role="xtick" data-plot="snd" data-value="0.2"/><text x="205" y="546" text-anchor="middle" class="fg-small">0.2</text><line x1="340" y1="530" x2="340" y2="534" class="fg-axis" data-role="xtick" data-plot="snd" data-value="0.4"/><text x="340" y="546" text-anchor="middle" class="fg-small">0.4</text><line x1="475" y1="530" x2="475" y2="534" class="fg-axis" data-role="xtick" data-plot="snd" data-value="0.6"/><text x="475" y="546" text-anchor="middle" class="fg-small">0.6</text><line x1="610" y1="530" x2="610" y2="534" class="fg-axis" data-role="xtick" data-plot="snd" data-value="0.8"/><text x="610" y="546" text-anchor="middle" class="fg-small">0.8</text><text x="340" y="562" text-anchor="middle" class="fg-small">Time (s)</text><text transform="translate(32 510) rotate(-90)" text-anchor="middle" class="fg-small">Sounds</text><path d="M70 510 L171.2 510 L171.9 509.5 L172.6 509.1 L173.3 510.4 L173.9 512.3 L174.6 511.7 L175.3 508.4 L176 506.1 L176.6 508.4 L177.3 513.3 L178 515 L178.7 510.7 L179.3 504.9 L180 504.6 L181.4 516.6 L182.1 514.9 L182.7 507.3 L183.4 502.6 L184.1 506.4 L184.8 514.4 L185.4 517.3 L186.1 511.8 L186.8 504.4 L187.4 503.5 L188.8 516 L189.5 514.9 L190.1 508.5 L190.8 504.4 L191.5 506.9 L192.2 512.3 L192.8 514.4 L193.5 511.4 L194.2 507.7 L194.9 507.3 L195.6 509.7 L196.2 511.5 L196.9 511 L197.6 509.9 L198.2 510 L208.4 510 L209.1 508.8 L209.7 510.6 L210.4 513.2 L211.1 507.8 L211.7 505.4 L212.4 514.6 L213.1 515 L213.8 502.5 L214.4 505.8 L215.1 520.2 L215.8 512.2 L216.5 497.6 L217.8 523.6 L218.5 505.5 L219.2 496.4 L219.8 518.3 L220.5 522.2 L221.2 498.2 L221.9 500.4 L222.5 524.5 L223.2 516.1 L223.9 493.9 L224.6 507.9 L225.2 526.4 L225.9 508 L226.6 494.6 L227.3 515.7 L227.9 523.1 L228.6 501.5 L229.3 499.9 L230 520.1 L230.7 516.6 L231.3 499.5 L232 506.7 L232.7 519.6 L234 502.2 L234.7 511.3 L235.4 515.4 L236.1 508 L236.7 507.1 L237.4 511.5 L238.8 510 L286 510 L394 510 L421 510 L421.7 509.1 L422.3 512.3 L423 508.3 L423.7 508.3 L424.4 515.5 L425.1 504.2 L425.7 511 L426.4 516 L427.1 500.4 L427.8 516.1 L428.4 512.8 L429.1 499.4 L429.8 521.1 L430.4 506.8 L431.1 502.4 L431.8 523.2 L432.5 500.9 L433.1 508.3 L433.8 521.2 L434.5 497.6 L435.2 514.7 L435.9 515.9 L436.5 498.5 L437.2 518.6 L438.6 502.6 L439.2 518.6 L439.9 506.2 L440.6 507.5 L441.2 515.5 L441.9 506 L442.6 510.4 L443.3 511.6 L443.9 508.8 L444.6 510 L502 510 L556 510 L556.7 509.5 L557.3 509.1 L558 510.4 L558.7 512.3 L559.4 511.7 L560 508.4 L560.7 506.1 L561.4 508.4 L562.1 513.3 L562.8 515 L563.4 510.7 L564.1 504.9 L564.8 504.6 L566.1 516.6 L566.8 514.9 L567.5 507.3 L568.1 502.6 L568.8 506.4 L569.5 514.4 L570.2 517.3 L570.9 511.8 L571.5 504.4 L572.2 503.5 L573.5 516 L574.2 514.9 L574.9 508.5 L575.6 504.4 L576.2 506.9 L576.9 512.3 L577.6 514.4 L578.3 511.4 L579 507.7 L579.6 507.3 L580.3 509.7 L581 511.5 L581.6 511 L582.3 509.9 L583 510 L609.3 510" class="fg-trace" data-role="snd" data-plot="snd"/><text x="183.2" y="495" text-anchor="start" class="fg-small fg-bold">S4</text><text x="220.4" y="495" text-anchor="start" class="fg-small fg-bold">S1</text><text x="429.6" y="495" text-anchor="start" class="fg-small fg-bold">S2</text><text x="568" y="495" text-anchor="start" class="fg-small fg-bold">S3</text><line id="cursor" x1="70" y1="28" x2="70" y2="514" class="fg-axis fg-c2" style="stroke-width:2"/><rect id="hit" x="70" y="0" width="540" height="534" fill="transparent" style="cursor:ew-resize"/></svg></div>
+    <div class="ctl"><button class="btn primary" type="button" id="play">▶ Play</button>
+      <input type="range" id="t" min="0" max="399" value="20" aria-label="Time in the cardiac cycle">
+      <span class="muted small" id="tlab"></span>
+      <label class="small muted"><input type="checkbox" id="slow" checked> slow motion</label></div>
+  </div>
+  <div class="panel phase" id="phase"></div>
+  </div>
+  <div class="right">
+    <div class="panel"><b>Valves</b><div class="valves" id="valves"></div>
+      <div class="vals" id="vals"></div></div>
+    <div class="panel pvbox"><b>Pressure–volume loop</b><div class="fig" role="img" aria-label="Left ventricular pressure–volume loop with a dot at the current moment"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 225" data-fig="cycle-pv"><line x1="52" y1="180" x2="272" y2="180" class="fg-thin"/><line x1="52" y1="131.4" x2="272" y2="131.4" class="fg-thin"/><line x1="52" y1="82.9" x2="272" y2="82.9" class="fg-thin"/><line x1="52" y1="34.3" x2="272" y2="34.3" class="fg-thin"/><line x1="52" y1="180" x2="272" y2="180" class="fg-axis"/><line x1="52" y1="10" x2="52" y2="180" class="fg-axis"/><line x1="72" y1="180" x2="72" y2="184" class="fg-axis" data-role="xtick" data-plot="pv" data-value="40"/><text x="72" y="196" text-anchor="middle" class="fg-small">40</text><line x1="152" y1="180" x2="152" y2="184" class="fg-axis" data-role="xtick" data-plot="pv" data-value="80"/><text x="152" y="196" text-anchor="middle" class="fg-small">80</text><line x1="232" y1="180" x2="232" y2="184" class="fg-axis" data-role="xtick" data-plot="pv" data-value="120"/><text x="232" y="196" text-anchor="middle" class="fg-small">120</text><line x1="48" y1="180" x2="52" y2="180" class="fg-axis" data-role="ytick" data-plot="pv" data-value="0"/><text x="45" y="184" text-anchor="end" class="fg-small">0</text><line x1="48" y1="131.4" x2="52" y2="131.4" class="fg-axis" data-role="ytick" data-plot="pv" data-value="40"/><text x="45" y="135.4" text-anchor="end" class="fg-small">40</text><line x1="48" y1="82.9" x2="52" y2="82.9" class="fg-axis" data-role="ytick" data-plot="pv" data-value="80"/><text x="45" y="86.9" text-anchor="end" class="fg-small">80</text><line x1="48" y1="34.3" x2="52" y2="34.3" class="fg-axis" data-role="ytick" data-plot="pv" data-value="120"/><text x="45" y="38.3" text-anchor="end" class="fg-small">120</text><text x="162" y="212" text-anchor="middle" class="fg-small">LV volume (mL)</text><text transform="translate(14 95) rotate(-90)" text-anchor="middle" class="fg-small">LV pressure</text><path d="M196.5 174.1 L204 174.1 L208.3 171.8 L211.5 170.5 L214.5 169.8 L217.7 169.4 L220.9 169.7 L224 170.3 L227.3 171.6 L231.5 173.8 L232 173.6 L232 84.3 L230.8 81.6 L219.5 69.6 L208.7 59.6 L200.5 53 L194.5 49 L188.7 45.7 L179.5 41.7 L167.4 37 L160.9 34.8 L156.3 33.5 L150.3 32.3 L146.1 31.9 L136.9 32.1 L128.6 32.7 L120.2 33.9 L112.2 35.7 L107.7 36.9 L104.4 38.3 L101.5 40.1 L99 42.3 L96.6 45.2 L94.7 48.4 L93.2 52.2 L92.3 55.9 L92 61 L92 166 L107.3 171.2 L126.6 172.3 L145.3 173.1 L172.6 173.9 L196.3 174.1" class="fg-trace fg-c1" data-role="loop" data-plot="pv"/><circle id="pvdot" cx="0" cy="0" r="5.5" class="fg-f2"/></svg></div></div>
+  </div>
+</div>
+
+</main>
+<script id="data" type="application/json">{"dt":0.002,"T":0.8,"x0":70,"w":540,"W":640,"ao":[88.1,88.1,88.0,87.9,87.9,87.8,87.7,87.7,87.6,87.5,87.5,87.4,87.3,87.3,87.2,87.1,87.1,87.0,86.9,86.9,86.8,86.7,86.7,86.6,86.5,86.5,86.4,86.3,86.3,86.2,86.1,86.1,86.0,85.9,85.9,85.8,85.8,85.7,85.6,85.6,85.5,85.4,85.4,85.3,85.2,85.2,85.1,85.0,85.0,84.9,84.8,84.8,84.7,84.7,84.6,84.5,84.5,84.4,84.3,84.3,84.2,84.1,84.1,84.0,83.9,83.9,83.8,83.8,83.7,83.6,83.6,83.5,83.4,83.4,83.3,83.3,83.2,83.1,83.1,83.0,82.9,82.9,82.8,82.7,82.7,82.6,82.6,82.5,82.4,82.4,82.3,82.2,82.2,82.1,82.1,82.0,81.9,81.9,81.8,81.7,81.7,81.6,81.6,81.5,81.4,81.4,81.3,81.3,81.2,81.1,81.1,81.0,80.9,80.9,80.8,80.8,80.7,80.6,80.6,80.5,80.5,80.4,80.3,80.3,80.2,80.2,80.1,80.0,81.0,83.0,84.9,86.8,88.6,90.4,92.1,93.7,95.3,96.8,98.3,99.7,101.0,102.3,103.5,104.6,105.6,106.6,107.6,108.4,109.2,109.9,110.5,111.1,111.7,112.3,112.9,113.4,114.0,114.5,115.1,115.6,116.1,116.6,117.0,117.5,117.9,118.3,118.7,119.0,119.3,119.6,119.8,120.0,120.2,120.3,120.4,120.5,120.5,120.5,120.5,120.5,120.5,120.5,120.5,120.4,120.4,120.4,120.3,120.3,120.2,120.2,120.1,120.0,119.9,119.9,119.8,119.7,119.6,119.5,119.4,119.3,119.2,119.1,119.0,118.8,118.7,118.6,118.5,118.4,118.2,118.1,118.0,117.8,117.7,117.5,117.3,117.1,116.9,116.7,116.4,116.2,115.9,115.6,115.3,115.0,114.7,114.3,114.0,113.6,113.2,112.9,112.5,112.1,111.7,111.2,110.8,110.4,110.0,109.5,109.1,108.6,108.2,107.7,107.2,106.8,106.3,105.8,105.3,104.9,104.4,103.9,103.5,103.0,102.5,102.1,101.6,101.2,100.6,100.1,99.5,98.8,98.0,95.1,93.9,93.3,93.8,94.9,96.2,97.1,97.7,98.0,98.2,98.4,98.5,98.5,98.5,98.4,98.2,97.9,97.6,97.3,97.1,96.8,96.6,96.5,96.3,96.2,96.1,96.0,95.9,95.9,95.8,95.7,95.6,95.6,95.5,95.4,95.4,95.3,95.2,95.1,95.1,95.0,94.9,94.9,94.8,94.7,94.6,94.6,94.5,94.4,94.4,94.3,94.2,94.1,94.1,94.0,93.9,93.9,93.8,93.7,93.6,93.6,93.5,93.4,93.4,93.3,93.2,93.1,93.1,93.0,92.9,92.9,92.8,92.7,92.6,92.6,92.5,92.4,92.4,92.3,92.2,92.2,92.1,92.0,91.9,91.9,91.8,91.7,91.7,91.6,91.5,91.5,91.4,91.3,91.3,91.2,91.1,91.0,91.0,90.9,90.8,90.8,90.7,90.6,90.6,90.5,90.4,90.4,90.3,90.2,90.2,90.1,90.0,89.9,89.9,89.8,89.7,89.7,89.6,89.5,89.5,89.4,89.3,89.3,89.2,89.1,89.1,89.0,88.9,88.9,88.8,88.7,88.7,88.6,88.5,88.5,88.4,88.3,88.3,88.2],"lv":[4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,5.0,5.0,5.1,5.2,5.3,5.4,5.6,5.7,5.9,6.0,6.2,6.4,6.6,6.8,6.9,7.1,7.3,7.5,7.6,7.8,8.0,8.1,8.2,8.3,8.4,8.5,8.6,8.6,8.7,8.7,8.7,8.7,8.6,8.6,8.5,8.4,8.3,8.2,8.1,8.0,7.8,7.6,7.5,7.3,7.1,6.9,6.8,6.6,6.4,6.2,6.0,5.9,5.7,5.6,5.4,5.3,5.2,5.1,5.1,5.2,5.2,5.3,5.4,5.4,5.5,5.7,6.4,7.6,9.2,11.3,13.6,16.2,19.1,22.0,25.1,28.1,31.1,34.0,37.1,40.5,44.4,48.5,52.7,57.0,61.2,65.4,69.3,72.9,76.1,78.9,81.1,83.1,85.2,87.1,89.0,90.9,92.7,94.4,96.0,97.6,99.2,100.6,102.0,103.3,104.6,105.8,106.9,107.9,108.9,109.8,110.6,111.3,112.0,112.6,113.2,113.9,114.5,115.1,115.6,116.2,116.7,117.3,117.8,118.3,118.7,119.2,119.6,120.0,120.4,120.7,121.0,121.2,121.5,121.7,121.8,121.9,122.0,122.0,122.0,122.0,122.0,121.9,121.9,121.8,121.8,121.7,121.6,121.6,121.5,121.4,121.3,121.2,121.1,120.9,120.8,120.7,120.6,120.4,120.3,120.1,120.0,119.8,119.7,119.5,119.4,119.2,119.0,118.9,118.7,118.5,118.3,118.2,118.0,117.8,117.6,117.4,117.2,116.9,116.7,116.4,116.1,115.8,115.5,115.2,114.9,114.5,114.2,113.8,113.4,113.0,112.6,112.2,111.8,111.4,111.0,110.6,110.2,109.7,109.3,108.8,108.4,108.0,107.5,107.0,106.6,106.1,105.7,105.2,104.8,104.3,103.9,103.4,103.0,102.6,102.2,101.8,101.3,100.9,100.4,99.9,99.4,98.7,98.0,97.1,95.9,94.4,92.6,90.7,88.5,86.2,83.7,81.1,78.5,75.7,72.9,70.1,67.3,64.5,61.8,59.2,56.6,54.2,52.0,49.8,47.5,45.2,42.9,40.5,38.1,35.7,33.3,30.9,28.6,26.4,24.2,22.1,20.2,18.3,16.6,15.1,13.7,12.5,11.5,10.6,9.7,8.9,8.0,7.3,7.1,7.0,6.8,6.7,6.5,6.4,6.3,6.2,6.1,6.0,5.9,5.9,5.8,5.7,5.6,5.6,5.5,5.5,5.4,5.4,5.3,5.3,5.3,5.2,5.2,5.2,5.1,5.1,5.1,5.1,5.1,5.0,5.0,5.0,5.0,5.0,5.0,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9,4.9],"la":[5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.6,5.7,5.8,5.9,6.1,6.2,6.4,6.6,6.8,7.0,7.2,7.5,7.7,7.9,8.2,8.4,8.7,8.9,9.1,9.3,9.5,9.7,9.9,10.0,10.2,10.3,10.4,10.4,10.5,10.5,10.5,10.5,10.4,10.4,10.3,10.2,10.0,9.9,9.7,9.5,9.3,9.1,8.9,8.7,8.4,8.2,7.9,7.7,7.5,7.2,7.0,6.8,6.6,6.4,6.2,6.1,5.9,5.8,5.7,5.6,5.5,5.5,5.5,5.5,5.6,5.6,5.7,5.8,5.9,6.1,6.2,6.3,6.5,6.6,6.7,6.9,6.9,7.0,7.1,7.1,7.1,7.1,7.0,6.9,6.8,6.7,6.6,6.4,6.2,6.1,5.9,5.7,5.6,5.4,5.3,5.2,5.1,5.0,4.9,4.9,4.8,4.7,4.6,4.6,4.5,4.4,4.3,4.3,4.2,4.1,4.0,3.9,3.9,3.8,3.7,3.7,3.6,3.6,3.5,3.5,3.4,3.4,3.4,3.4,3.3,3.3,3.3,3.3,3.3,3.3,3.3,3.4,3.4,3.4,3.4,3.5,3.5,3.6,3.6,3.7,3.8,3.8,3.9,4.0,4.1,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.9,5.0,5.1,5.2,5.3,5.4,5.5,5.6,5.8,5.9,6.0,6.1,6.2,6.3,6.4,6.5,6.6,6.7,6.8,6.9,7.0,7.1,7.2,7.2,7.3,7.4,7.5,7.5,7.6,7.6,7.7,7.7,7.8,7.8,7.8,7.9,7.9,8.0,8.0,8.1,8.1,8.2,8.2,8.2,8.3,8.3,8.4,8.4,8.5,8.5,8.6,8.6,8.7,8.7,8.8,8.8,8.9,8.9,9.0,9.0,9.1,9.1,9.2,9.2,9.3,9.3,9.4,9.4,9.5,9.5,9.6,9.6,9.7,9.7,9.8,9.8,9.9,9.9,10.0,10.0,10.1,10.2,10.2,10.3,10.3,10.4,10.4,10.5,10.5,10.6,10.6,10.7,10.8,10.8,10.9,10.9,11.0,11.0,11.1,11.2,11.2,11.3,11.3,11.4,11.4,11.5,11.5,11.5,11.5,11.5,11.5,11.2,10.9,10.6,10.3,10.0,9.8,9.5,9.3,9.1,8.9,8.7,8.5,8.4,8.2,8.0,7.9,7.8,7.6,7.5,7.4,7.3,7.2,7.1,7.0,6.9,6.9,6.8,6.7,6.6,6.6,6.5,6.5,6.4,6.4,6.3,6.3,6.2,6.2,6.1,6.1,6.1,6.0,6.0,6.0,6.0,5.9,5.9,5.9,5.9,5.8,5.8,5.8,5.8,5.8,5.8,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.7,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.6,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5],"vol":[102.3,102.4,102.5,102.6,102.7,102.8,102.9,103.0,103.1,103.2,103.3,103.4,103.5,103.7,103.8,103.9,104.0,104.1,104.2,104.3,104.4,104.5,104.6,104.7,104.8,104.9,105.0,105.1,105.3,105.4,105.5,105.6,105.7,105.8,105.9,106.0,106.0,106.0,106.1,106.2,106.2,106.3,106.5,106.6,106.7,106.9,107.1,107.3,107.5,107.7,107.9,108.1,108.4,108.6,108.9,109.2,109.4,109.7,110.0,110.3,110.6,110.9,111.2,111.6,111.9,112.2,112.5,112.8,113.2,113.5,113.8,114.1,114.4,114.8,115.1,115.4,115.7,116.0,116.3,116.6,116.8,117.1,117.4,117.6,117.9,118.1,118.3,118.5,118.7,118.9,119.1,119.3,119.4,119.5,119.7,119.8,119.8,119.9,120.0,120.0,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,119.4,118.3,117.1,116.0,114.9,113.8,112.7,111.6,110.5,109.4,108.4,107.3,106.3,105.3,104.2,103.2,102.2,101.3,100.3,99.3,98.4,97.4,96.5,95.6,94.6,93.7,92.8,92.0,91.1,90.2,89.4,88.5,87.7,86.9,86.1,85.2,84.5,83.7,82.9,82.1,81.4,80.6,79.9,79.2,78.5,77.7,77.0,76.4,75.7,75.0,74.4,73.7,73.1,72.4,71.8,71.2,70.6,70.0,69.4,68.9,68.3,67.7,67.2,66.7,66.1,65.6,65.1,64.6,64.1,63.6,63.2,62.7,62.3,61.8,61.4,60.9,60.5,60.1,59.7,59.3,58.9,58.6,58.2,57.8,57.5,57.2,56.8,56.5,56.2,55.9,55.6,55.3,55.0,54.7,54.5,54.2,54.0,53.7,53.5,53.3,53.1,52.9,52.7,52.5,52.3,52.1,51.9,51.8,51.6,51.5,51.3,51.2,51.1,51.0,50.9,50.8,50.7,50.6,50.5,50.4,50.4,50.3,50.2,50.2,50.1,50.1,50.1,50.1,50.0,50.0,50.0,50.0,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,51.6,53.1,54.7,56.2,57.7,59.1,60.5,61.9,63.3,64.7,66.0,67.3,68.5,69.8,71.0,72.2,73.3,74.5,75.6,76.7,77.7,78.7,79.7,80.7,81.7,82.6,83.5,84.3,85.2,86.0,86.8,87.5,88.3,89.0,89.7,90.3,90.9,91.5,92.1,92.7,93.2,93.7,94.1,94.6,95.0,95.4,95.7,96.1,96.4,96.7,96.9,97.1,97.3,97.5,97.7,97.8,97.9,97.9,98.0,98.0,98.1,98.2,98.3,98.4,98.5,98.6,98.7,98.9,99.0,99.1,99.2,99.3,99.4,99.5,99.6,99.7,99.8,99.9,100.0,100.1,100.2,100.3,100.5,100.6,100.7,100.8,100.9,101.0,101.1,101.2,101.3,101.4,101.5,101.6,101.7,101.8,101.9,102.1,102.2],"ra":[4.05,4.05,4.04,4.04,4.04,4.04,4.04,4.04,4.04,4.04,4.03,4.03,4.03,4.03,4.03,4.03,4.04,4.07,4.11,4.18,4.27,4.37,4.49,4.62,4.76,4.92,5.09,5.26,5.44,5.63,5.82,6.01,6.19,6.37,6.55,6.71,6.87,7.02,7.15,7.27,7.37,7.46,7.52,7.57,7.6,7.61,7.6,7.57,7.52,7.45,7.37,7.26,7.15,7.01,6.87,6.71,6.54,6.36,6.18,5.99,5.81,5.62,5.43,5.25,5.07,4.91,4.75,4.6,4.47,4.35,4.25,4.16,4.09,4.04,4.01,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.01,4.05,4.12,4.2,4.3,4.42,4.55,4.69,4.84,4.98,5.12,5.24,5.35,5.45,5.52,5.57,5.6,5.6,5.57,5.52,5.45,5.35,5.24,5.12,4.98,4.84,4.69,4.54,4.41,4.28,4.16,4.07,3.99,3.93,3.9,3.88,3.86,3.83,3.81,3.78,3.75,3.72,3.69,3.66,3.62,3.58,3.55,3.51,3.48,3.44,3.4,3.36,3.33,3.29,3.25,3.21,3.17,3.13,3.09,3.05,3.0,2.96,2.92,2.88,2.84,2.8,2.76,2.72,2.68,2.64,2.6,2.57,2.53,2.5,2.46,2.43,2.39,2.36,2.33,2.3,2.28,2.25,2.22,2.2,2.18,2.16,2.14,2.12,2.11,2.09,2.08,2.07,2.06,2.06,2.05,2.05,2.05,2.05,2.06,2.07,2.07,2.08,2.1,2.11,2.13,2.15,2.17,2.19,2.22,2.25,2.28,2.31,2.34,2.38,2.42,2.46,2.5,2.54,2.59,2.64,2.69,2.74,2.79,2.85,2.9,2.96,3.02,3.08,3.14,3.21,3.27,3.34,3.41,3.47,3.54,3.61,3.68,3.75,3.83,3.9,3.97,4.05,4.12,4.2,4.27,4.34,4.42,4.49,4.57,4.64,4.72,4.79,4.86,4.94,5.01,5.08,5.15,5.22,5.29,5.36,5.43,5.49,5.56,5.62,5.68,5.74,5.8,5.86,5.92,5.97,6.03,6.08,6.13,6.18,6.23,6.27,6.32,6.36,6.4,6.44,6.47,6.51,6.54,6.57,6.6,6.51,6.43,6.35,6.26,6.18,6.1,6.02,5.94,5.86,5.78,5.71,5.63,5.55,5.48,5.4,5.33,5.25,5.18,5.11,5.03,4.96,4.89,4.82,4.75,4.69,4.62,4.55,4.49,4.42,4.36,4.29,4.23,4.17,4.11,4.05,4.0,3.94,3.89,3.84,3.79,3.74,3.69,3.64,3.6,3.56,3.52,3.48,3.44,3.4,3.37,3.34,3.31,3.28,3.26,3.24,3.22,3.2,3.18,3.16,3.15,3.14,3.13,3.13,3.12,3.12,3.12,3.12,3.12,3.13,3.13,3.14,3.15,3.16,3.17,3.19,3.2,3.22,3.24,3.26,3.28,3.3,3.32,3.35,3.37,3.4,3.42,3.45,3.48,3.5,3.53,3.56,3.58,3.61,3.64,3.66,3.69,3.72,3.74,3.77,3.79,3.82,3.84,3.86,3.88,3.9,3.92,3.94,3.96,3.97,3.99,4.0,4.01,4.02,4.03,4.04,4.04,4.05,4.05,4.05],"pv":{"x0":52,"w":220,"y0":10,"h":170,"xr":[30,140],"yr":[0,140]},"bounds":[0.07,0.205,0.257,0.36,0.515,0.601,0.72,0.8700000000000001],"phases":[{"name":"Atrial systole","id":"atrial","vent":"Diastole","valves":"AV open","text":"The P wave spreads through the atria and they contract, giving the a wave in the atrial and jugular pressure. This atrial kick adds about the last 20% of ventricular filling. An S4 is heard here when the atrium contracts against a stiff ventricle."},{"name":"Isovolumic contraction","id":"ivc","vent":"Systole","valves":"all closed","text":"The QRS triggers ventricular contraction. As soon as LV pressure rises above LA pressure the mitral valve closes (S1). With every valve closed, pressure climbs steeply while volume stays at end-diastolic volume. The bulging tricuspid valve gives the JVP c wave."},{"name":"Rapid ejection","id":"ej1","vent":"Systole","valves":"semilunar open","text":"LV pressure passes aortic pressure (about 80 mmHg) and the aortic valve opens. Blood leaves quickly, volume falls fast, and aortic pressure rises toward about 120 mmHg. The tricuspid ring is pulled toward the apex: the JVP x′ descent."},{"name":"Reduced ejection","id":"ej2","vent":"Systole","valves":"semilunar open","text":"Ejection slows. LV pressure falls slightly below aortic pressure while blood keeps moving forward on its momentum. The T wave (ventricular repolarization) ends shortly before ejection stops. The atria are filling: the v wave is building."},{"name":"Isovolumic relaxation","id":"ivr","vent":"Diastole","valves":"all closed","text":"The aortic valve snaps shut (S2), and blood rebounding against it makes the dicrotic notch. With every valve closed again, LV pressure falls steeply at end-systolic volume. The v wave peaks."},{"name":"Rapid filling","id":"fill","vent":"Diastole","valves":"AV open","text":"LV pressure drops below LA pressure, the mitral valve opens, and blood rushes in: volume rises quickly and atrial pressure falls (y descent). An S3 here is normal in children but signals volume overload in adults."},{"name":"Diastasis","id":"dias","vent":"Diastole","valves":"AV open","text":"Pressures in atrium and ventricle are nearly equal, so filling slows to a trickle while the ventricle stays relaxed."}],"events":{"MC":0.205,"AO":0.257,"AC":0.515,"MO":0.601}}</script>
+<script>
+/* Study-set navbar: Light/Dark switch, and links that carry the current mode. */
+(function(){
+  var root = document.documentElement, sys = matchMedia("(prefers-color-scheme: dark)"), k = "patho-cardio-theme";
+  function current(){ return root.getAttribute("data-theme") || (sys.matches ? "dark" : "light"); }
+  function show(){
+    document.getElementById("th-light").setAttribute("aria-pressed", current() === "light" ? "true" : "false");
+    document.getElementById("th-dark").setAttribute("aria-pressed", current() === "dark" ? "true" : "false");
+    document.querySelectorAll("#studynav .links a, a[data-studyset]").forEach(function(a){
+      a.href = a.getAttribute("href").split("?")[0] + "?theme=" + current();
+    });
+  }
+  function set(t){ root.setAttribute("data-theme", t); try { localStorage.setItem(k, t); } catch(e){} show(); }
+  document.getElementById("th-light").addEventListener("click", function(){ set("light"); });
+  document.getElementById("th-dark").addEventListener("click", function(){ set("dark"); });
+  if (sys.addEventListener) sys.addEventListener("change", show);
+  show();
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var D = JSON.parse(document.getElementById("data").textContent);
+var N = D.lv.length, i = 20, playing = false, last = 0;
+function el(t, c, x){ var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+function phaseAt(t){
+  for (var k = 0; k < D.phases.length; k++){
+    var a = D.bounds[k], b = D.bounds[k + 1];
+    if ((t >= a && t < b) || (b > D.T && t < b - D.T)) return k;
+  }
+  return 0;
+}
+var VALVES = [["Mitral", "AV"], ["Tricuspid", "AV"], ["Aortic", "SL"], ["Pulmonic", "SL"]];
+function fillPhase(P, ph){
+  P.innerHTML = "";
+  P.appendChild(el("h2", null, ph.name));
+  var tags = el("div"); tags.appendChild(el("span", "tag", "Ventricles: " + (ph.vent === "Systole" ? "systole" : "diastole")));
+  P.appendChild(tags); P.appendChild(el("p", null, ph.text));
+}
+var shownPhase = -1;
+/* Keep the page at least as tall as it is with the longest description, so the
+   page height (and the scroll position at the bottom) never changes while the
+   cycle plays. The spare room is blank space at the very bottom. */
+function holdHeight(){
+  var M = document.querySelector("main"), P = document.getElementById("phase"), max = 0;
+  M.style.minHeight = "";
+  D.phases.forEach(function(ph){ fillPhase(P, ph); max = Math.max(max, M.offsetHeight); });
+  M.style.minHeight = max + "px";
+  shownPhase = -1;
+}
+function draw(){
+  var t = i * D.dt, k = phaseAt(t), ph = D.phases[k];
+  var x = D.x0 + t / D.T * D.w;
+  var c = document.getElementById("cursor"); c.setAttribute("x1", x); c.setAttribute("x2", x);
+  var pv = D.pv, px = pv.x0 + (D.vol[i] - pv.xr[0]) / (pv.xr[1] - pv.xr[0]) * pv.w;
+  var py = pv.y0 + pv.h - (D.lv[i] - pv.yr[0]) / (pv.yr[1] - pv.yr[0]) * pv.h;
+  var dot = document.getElementById("pvdot"); dot.setAttribute("cx", px); dot.setAttribute("cy", py);
+  document.getElementById("t").value = i;
+  document.getElementById("tlab").textContent = t.toFixed(2) + " s";
+  if (k !== shownPhase){ fillPhase(document.getElementById("phase"), ph); shownPhase = k; }
+  var V = document.getElementById("valves"); V.innerHTML = "";
+  VALVES.forEach(function(v){
+    var open = (v[1] === "AV" && ph.valves === "AV open") || (v[1] === "SL" && ph.valves === "semilunar open");
+    var d = el("div", "valve" + (open ? " open" : "")); d.appendChild(el("b", null, v[0])); d.appendChild(el("span", null, open ? "open" : "closed"));
+    V.appendChild(d);
+  });
+  var vals = document.getElementById("vals"); vals.innerHTML = "";
+  [["Aortic pressure", D.ao[i].toFixed(0) + " mmHg"], ["LV pressure", D.lv[i].toFixed(0) + " mmHg"], ["LA pressure", D.la[i].toFixed(0) + " mmHg"],
+   ["LV volume", D.vol[i].toFixed(0) + " mL"], ["JVP (RA)", D.ra[i].toFixed(1) + " mmHg"]].forEach(function(r){
+    vals.appendChild(el("span", null, r[0])); vals.appendChild(el("span", null, r[1]));
+  });
+}
+document.querySelectorAll("#chart rect[data-phase]").forEach(function(r){
+  r.addEventListener("click", function(){
+    var k = D.phases.findIndex(function(p){ return p.id === r.getAttribute("data-phase"); });
+    stop(); i = Math.round(((D.bounds[k] + 0.01) % D.T) / D.dt); draw();
+  });
+});
+var svg = document.querySelector("#chart svg"), hit = document.getElementById("hit"), dragging = false;
+function fromEvent(e){
+  var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  i = Math.max(0, Math.min(N - 1, Math.round((p.x - D.x0) / D.w * D.T / D.dt))); draw();
+}
+hit.addEventListener("pointerdown", function(e){ stop(); dragging = true; hit.setPointerCapture(e.pointerId); fromEvent(e); });
+hit.addEventListener("pointermove", function(e){ if (dragging) fromEvent(e); });
+hit.addEventListener("pointerup", function(){ dragging = false; });
+document.getElementById("t").addEventListener("input", function(e){ stop(); i = +e.target.value; draw(); });
+function stop(){ playing = false; document.getElementById("play").textContent = "▶ Play"; }
+function tick(ts){
+  if (!playing) return;
+  var speed = document.getElementById("slow").checked ? 0.15 : 1;
+  if (last) i = (i + Math.max(1, Math.round((ts - last) / 1000 * speed / D.dt))) % N;
+  last = ts; draw(); requestAnimationFrame(tick);
+}
+document.getElementById("play").addEventListener("click", function(){
+  playing = !playing; this.textContent = playing ? "❚❚ Pause" : "▶ Play"; last = 0; if (playing) requestAnimationFrame(tick);
+});
+document.getElementById("t").max = N - 1;
+draw();          // fill the valves and readouts first, so they count in the measurement
+holdHeight();
+var lastW = window.innerWidth;
+window.addEventListener("resize", function(){ if (window.innerWidth !== lastW){ lastW = window.innerWidth; holdHeight(); draw(); } });
+draw();
+})();
+</script>
+</body></html>
