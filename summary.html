@@ -239,8 +239,9 @@ table.t tr:last-child td{border-bottom:none}
 .badge2{display:inline-block;font-size:11.5px;border:1px solid var(--flag);color:var(--flag);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:1px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:760px){.two{grid-template-columns:1fr}}
-.chdgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
-.chdgrid .fig svg{max-height:340px}
+/* two diagrams per row at full width (each near its drawn size), one when narrow */
+.chdgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media (max-width:900px){.chdgrid{grid-template-columns:1fr}}
 @media print{.toc,.studynav{display:none}.card2,table.t{break-inside:avoid}body{background:#fff}}
 </style></head>
 <body>
